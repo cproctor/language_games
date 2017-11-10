@@ -20,6 +20,7 @@ cs224w & cs229 final project.
 
 ## Directory structure
 
+- **src** is for code we write.
 - **lib** is for libraries written by others. 
 - **data** is where big source files (not part of this repo) live. 
 - **train** is for embeddings we trained.
