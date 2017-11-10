@@ -1,3 +1,4 @@
+# Word2Vec implementations from TensorFlow Embedding Tutorial
 This directory contains models for unsupervised training of word embeddings
 using the model described in:
 
