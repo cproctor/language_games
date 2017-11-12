@@ -4,7 +4,7 @@ import csv
 import numpy as np
 import matplotlib.pyplot as plt
 
-with open("hn_comments.csv") as inf:
+with open("../../data/hn_comments.csv") as inf:
     reader = csv.DictReader(inf)
     comments = [len(row['comment_text'].split()) for row in reader]
 
