@@ -9,12 +9,12 @@ import numpy as np
 import matplotlib.pyplot as plt
 from timer import Timer
 from random import sample
-import yaml
 
 USER_GRAPH = "../../data/hn_user_graph.txt"
 USER_DEGREE_DIST = "../../data/hn_user_degree_dist.npy"
 USER_DEGREE_CF_HIST = "../../data/hn_user_degree_cf_hist.npy"
 USER_DEGREE_DIST_CHART = "../../results/hn_user_degree_distribution.png"
+USER_DEGREE_DIST_CHART_WITH_EST = "../../results/hn_user_degree_distribution_with_est.png"
 USER_DEGREE_CF_HIST_CHART = "../../results/hn_user_clustering_coefficients.png"
 
 def get_nodes(G):
@@ -60,7 +60,7 @@ if True:
     plt.savefig(USER_DEGREE_DIST_CHART)
     timer.elapsed("Time to get degree distribution")
 
-if True:
+if False:
     plt.clf()
     samplesize = 10000
     cf, cfHist = get_clustering_coefficient(G, sample=samplesize)
@@ -91,7 +91,7 @@ if True:
     plt.title("Hacker News degree distribution")
     plt.xlabel('Node degree (log)')
     plt.ylabel('Proportion of nodes with a given degree (log)')
-    plt.savefig(USER_DEGREE_DIST_CHART)
+    plt.savefig(USER_DEGREE_DIST_CHART_WITH_EST)
     timer.elapsed("Time to estimate power law alpha with {} samples".format(samplesize))
 
 
