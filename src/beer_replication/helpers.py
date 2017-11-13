@@ -27,7 +27,7 @@ def split_comments_by_month(csvfile, get_monthly_filename, chunksize=10000):
     currentDf = pd.DataFrame()
     currMonthStart = arrow.get('1900').datetime
     currMonthEnd = arrow.get('1900').datetime
-    counts = pd.DataFrame()
+    counts = {}
     for chunk in pd.read_csv(csvfile, header=None, chunksize=chunksize, 
             names=["comment_text","points","author","created_at","object_id","parent_id"],
             parse_dates=["created_at"]):
@@ -38,8 +38,7 @@ def split_comments_by_month(csvfile, get_monthly_filename, chunksize=10000):
             while True:
                 if len(currentDf) > 0: 
                     currentDf.to_csv(get_monthly_filename(currMonthStart.year, currMonthStart.month))
-                    counts = counts.append(
-                            {"month": [currMonthStart], "comments": [len(currentDf)]}, ignore_index=True)
+                    counts[currMonthStart] = len(currentDf)
                     print(" - {}/{} had {} comments".format(currMonthStart.year, currMonthStart.month, len(currentDf)))
                 currentDf = pd.DataFrame()
                 chunk = chunk[~inCurrMonth]

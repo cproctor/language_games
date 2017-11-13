@@ -19,15 +19,29 @@ HN_DB = "../../data/hn_comments.sqlite3"
 HN_MONTHLY_DIR = "../../data/hn_monthly"
 HN_MONTHLY_TEMPLATE = "hn_comments_{}_{}.csv"
 HN_MONTHLY_COUNTS = "../../data/hn_monthly_count.csv"
+HN_MONTHLY_COUNT_CHART = "../../results/hn_monthly_comments.png"
 
-# Prepare the dataset by loading it into a database 
-#create_db_if_missing(HN_DATA, HN_DB)
+HN_MONTHLY_CORPUS_DIR = "../../data/hn_corpus_monthly"
+HN_MONTHLY_CORPUS_TEMPLATE = "hn_corpus_{}_{}.txt"
 
 def get_month_filepath(year, month):
     return join(HN_MONTHLY_DIR, HN_MONTHLY_TEMPLATE.format(year, month))
 
-counts = split_comments_by_month(HN_DATA, get_month_filepath)
-counts.to_csv(HN_MONTHLY_COUNTS)
+def get_month_corpus_filepath(year, month):
+    return join(HN_MONTHLY_CORPUS_DIR, HN_MONTHLY_CORPUS_TEMPLATE.format(year, month))
+
+if False: # Split comments into monthly files
+    counts = split_comments_by_month(HN_DATA, get_month_filepath)
+    pd.DataFrame(counts.items(), columns=["month", "comments"]).to_csv(HN_MONTHLY_COUNTS, date_format='%Y-%m', 
+            index=False)
+
+if True: # Plot the monthly comments chart
+    counts = pd.read_csv(HN_MONTHLY_COUNTS)
+    counts.plot.bar(x="month", y="comments")
+    plt.savefig(HN_MONTHLY_COUNT_CHART)
+    
+if True: # Generate monthly 
+    pass
 
 # Table 1 (p. 3)
 
