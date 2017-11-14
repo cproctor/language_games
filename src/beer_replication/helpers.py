@@ -4,7 +4,10 @@ import arrow
 import pandas as pd
 import sqlite3
 import os
-
+import nltk
+import snap
+from HTMLParser import HTMLParser
+import io
 
 def create_db_if_missing(csvfile, dbfile):
     "If the specified db does not exist, created it"
@@ -16,40 +19,72 @@ def create_db_if_missing(csvfile, dbfile):
             chunk.to_sql(name='comments', con=conn, if_exists='append', index=False,
             infer_datetime_format=True)
                 
-def split_comments_by_month(csvfile, get_monthly_filename, chunksize=10000):
+def split_comments_by_month(csvfile, get_monthly_filename, start_month="2007-01", end_month="2017-09"):
     """
     Splits out a huge file full of comments into separate files, one per month.
 
     Params:
         csvfile: a file with all comments
         get_monthly_filename: a function mapping (year, month) -> filename
+        start_month: string or datetime
+        end_month: string or datetime
     """
-    currentDf = pd.DataFrame()
-    currMonthStart = arrow.get('1900').datetime
-    currMonthEnd = arrow.get('1900').datetime
     counts = {}
-    for chunk in pd.read_csv(csvfile, header=None, chunksize=chunksize, 
+    comments = pd.read_csv(csvfile, header=None,
             names=["comment_text","points","author","created_at","object_id","parent_id"],
-            parse_dates=["created_at"]):
-        inCurrMonth = (chunk.created_at >= currMonthStart) & (chunk.created_at <= currMonthEnd)
-        currChunk = chunk[inCurrMonth]
-        currentDf = currentDf.append(currChunk)
-        if len(currChunk) < chunksize: # We have some remainder here. Need to iterat through it
-            while True:
-                if len(currentDf) > 0: 
-                    currentDf.to_csv(get_monthly_filename(currMonthStart.year, currMonthStart.month))
-                    counts[currMonthStart] = len(currentDf)
-                    print(" - {}/{} had {} comments".format(currMonthStart.year, currMonthStart.month, len(currentDf)))
-                currentDf = pd.DataFrame()
-                chunk = chunk[~inCurrMonth]
-                if len(chunk) == 0: break # end of comments
-                currMonthStart = arrow.get(chunk.iloc[0].created_at).floor('month').datetime
-                currMonthEnd = arrow.get(chunk.iloc[0].created_at).ceil('month').datetime
-                inCurrMonth = (chunk.created_at >= currMonthStart) & (chunk.created_at <= currMonthEnd)
-                currChunk = chunk[inCurrMonth]
-                currentDf = currentDf.append(currChunk)
-                if len(currChunk) == 0: 
-                    print(currChunk)
-                    print(chunk)
-                if len(currChunk) == len(chunk): break # The current month's comments may continue into the next chunk
-    return counts
+            parse_dates=["created_at"])
+    months = arrow.Arrow.span_range('month', arrow.get(start_month), arrow.get(end_month))
+    for begin, end in months:
+        currComments = comments[(comments.created_at >= begin.datetime) & (comments.created_at <= end.datetime)]
+        print("{}-{}: {}".format(begin.format("YYYY-MM-DD"), end.format("YYYY-MM-DD"), len(currComments)))
+        counts[begin.format("YYYY-MM")] = len(currComments)
+        currComments.to_csv(get_monthly_filename(begin.year, begin.month))
+    return pd.DataFrame(counts.items(), columns=["month", "comments"])
+
+htmlParser = HTMLParser()
+tokenizer = nltk.WordPunctTokenizer()
+
+def to_ascii(s):
+    if not isinstance(basestring, s):
+        s = str(s)
+        s = s.encode('ascii', 'ignore')
+        return s
+
+def get_thread_text(comments):
+    "Groups comments into threads, then concatenates the text of each thread."
+    comments.object_id = comments.object_id.astype(int)
+    comments.parent_id = comments.parent_id.astype(int)
+    nodes = set(comments.object_id).union(set(comments.parent_id))
+    commentsGraph = snap.TUNGraph.New()
+    for node in nodes: 
+        commentsGraph.AddNode(node)
+    for edge in comments[['object_id', 'parent_id']].values.tolist(): 
+        commentsGraph.AddEdge(*edge)
+    commentThreads = snap.TCnComV()
+    snap.GetSccs(commentsGraph, commentThreads)
+    threadText = []
+    for commentThread in commentThreads:
+        commentsInThread = comments[comments['object_id'].isin(commentThread)]
+        commentsInThread = commentsInThread.comment_text.astype(str) # No more floats in here...
+        #commentsInThread = [c.encode('ascii', 'ignore') for c in commentsInThread]
+        commentsInThread = [c.decode('ascii', errors='replace').encode('ascii', 'ignore') for c in commentsInThread]
+        commentsInThread = [htmlParser.unescape(c) for c in commentsInThread]
+        threadText.append(" ".join(commentsInThread))
+    return " ".join(threadText)
+
+def tokenize(commentsfile):
+    """
+    Converts a comments file into one-sentence-per-line tokens. 
+    1. Group comments into threads
+    3. Split into sentences
+    4. Tokenize each sentence
+
+    Params:
+        commentsfile: filename (with headers)
+    """
+    with io.open(commentsfile, 'r', encoding='utf-8') as cf:
+        comments = pd.read_csv(cf, usecols=['comment_text', 'object_id', 'parent_id'])
+    text = get_thread_text(comments)
+    sentences = nltk.sent_tokenize(text)
+    return [tokenizer.tokenize(sentence) for sentence in sentences]
+    
