@@ -1,6 +1,7 @@
 data/*
 train/*
 results/*
+lib/*
 *.so
 *.swp
 *.swo

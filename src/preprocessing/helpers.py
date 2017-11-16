@@ -18,6 +18,14 @@ def create_db_if_missing(csvfile, dbfile):
                 names=["comment_text","points","author","created_at","object_id","parent_id"]):
             chunk.to_sql(name='comments', con=conn, if_exists='append', index=False,
             infer_datetime_format=True)
+
+htmlParser = HTMLParser()
+tokenizer = nltk.WordPunctTokenizer()
+
+def clean_comment_text(series):
+    text = str(series.comment_text).decode('ascii', errors='replace').encode('ascii', 'ignore').lower()
+    text = htmlParser.unescape(text)
+    return " ".join(tokenizer.tokenize(text))
                 
 def split_comments_by_month(csvfile, get_monthly_filename, start_month="2007-01", end_month="2017-09"):
     """
@@ -30,19 +38,19 @@ def split_comments_by_month(csvfile, get_monthly_filename, start_month="2007-01"
         end_month: string or datetime
     """
     counts = {}
-    comments = pd.read_csv(csvfile, header=None,
-            names=["comment_text","points","author","created_at","object_id","parent_id"],
-            parse_dates=["created_at"])
+    with io.open(csvfile, 'r', encoding='utf-8') as cf:
+        comments = pd.read_csv(cf, header=None,
+                names=["comment_text","points","author","created_at","object_id","parent_id"],
+                parse_dates=["created_at"])
+    comments['comment_text'] = comments.apply(clean_comment_text, axis=1)
     months = arrow.Arrow.span_range('month', arrow.get(start_month), arrow.get(end_month))
     for begin, end in months:
         currComments = comments[(comments.created_at >= begin.datetime) & (comments.created_at <= end.datetime)]
         print("{}-{}: {}".format(begin.format("YYYY-MM-DD"), end.format("YYYY-MM-DD"), len(currComments)))
         counts[begin.format("YYYY-MM")] = len(currComments)
-        currComments.to_csv(get_monthly_filename(begin.year, begin.month))
+        currComments.to_csv(get_monthly_filename(begin.year, begin.month), encoding='utf-8')
     return pd.DataFrame(counts.items(), columns=["month", "comments"])
 
-htmlParser = HTMLParser()
-tokenizer = nltk.WordPunctTokenizer()
 
 def get_thread_text(comments):
     "Groups comments into threads, then concatenates the text of each thread."

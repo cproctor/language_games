@@ -13,6 +13,7 @@ cs224w & cs229 final project.
     - `python3 -m venv env`
     - `source env/bin/activate`
     - `pip install -r requirements.txt`
+    - Download and compile [kenlm](https://kheafield.com/code/kenlm/)
 - Compile tensorflow ops
     - Follow instructions in word2vec/README.md and word2vec/NOTES.md
 - Train the default word2vec implementation
