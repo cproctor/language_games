@@ -1,13 +1,17 @@
 # Helpers for generate.py
 
 import arrow
+import numpy as np
 import pandas as pd
+import matplotlib.pyplot as plt
 import sqlite3
 import os
 import nltk
 import snap
 from HTMLParser import HTMLParser
 import io
+import kenlm
+from palettable.colorbrewer.qualitative import Set1_6 as colors
 
 def create_db_if_missing(csvfile, dbfile):
     "If the specified db does not exist, created it"
@@ -60,7 +64,6 @@ def get_thread_text(comments):
     for commentThread in commentThreads:
         commentsInThread = comments[comments['object_id'].isin(commentThread)]
         commentsInThread = commentsInThread.comment_text.astype(str) # No more floats in here...
-        #commentsInThread = [c.encode('ascii', 'ignore') for c in commentsInThread]
         commentsInThread = [c.decode('ascii', errors='replace').encode('ascii', 'ignore') for c in commentsInThread]
         commentsInThread = [htmlParser.unescape(c) for c in commentsInThread]
         threadText.append(" ".join(commentsInThread))
@@ -82,3 +85,40 @@ def tokenize(commentsfile):
     sentences = nltk.sent_tokenize(text)
     return [tokenizer.tokenize(sentence) for sentence in sentences]
     
+def cross_entropy(perplexity):
+    return np.log(-perplexity)/np.log(2)
+
+def smooth(y, box_pts):
+    box = np.ones(box_pts)/box_pts
+    y_smooth = np.convolve(y, box, mode='same')
+    return y_smooth
+
+class LongitudinalCE:
+    "Pass a list of strings, each a filepath to a kenlm model"
+    def __init__(self, model_files, labels=None):
+        self.models = [kenlm.Model(f) for f in model_files]
+        self.labels = labels or range(len(self.models))
+
+    def score(self, sent):
+        return [cross_entropy(model.score(sent)) for model in self.models]
+
+    def plot(self, sentences):
+        if isinstance(sentences, basestring):
+            sentences = [sentences]
+        x = range(len(self.labels))[4:-2]
+        ax = plt.subplot()
+        ax.set_color_cycle(colors.mpl_colors)
+        for sentence in sentences:
+            scores = self.score(sentence)
+            #plt.scatter(x, scores, lw=0, alpha=0.5)
+            plt.plot(x, smooth(scores, 6)[4:-2], lw=2)
+        spacedLabels = [label if i % 6==0 else '' for i, label in enumerate(self.labels)][4:-2]
+        plt.xticks(x, spacedLabels, rotation='vertical')
+        plt.legend(sentences, loc=0)
+        plt.xlabel("Time")
+        plt.ylabel("Cross-entropy (less-surprising is lower)")
+        plt.title("Hacker News Community change over time")
+        plt.show()
+
+
+
