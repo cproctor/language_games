@@ -1,5 +1,6 @@
 # What to do: 
 # 1. Get just the keyedvectors, not the whole models. 
+# Use a logistic transform before plotting
 
 from gensim.models.keyedvectors import KeyedVectors
 from gensim.matutils import argsort
@@ -41,6 +42,34 @@ class DiscourseCommunity:
         best = argsort(shifts, topn=topn, reverse=False) # Low cosine similarity means far apart
         return [(self.wvs[0].index2word[i], shifts[i]) for i in best]
 
+    def greatest_projected_shift(self, word1, word2, topn=10, restrict_vocab=None):
+        """
+        Projects words onto the line spanning `word1` and `word2`, once for the first model
+        and once for the last model. Returns the words with the highest absolute value of shift between
+        the two models
+        """
+        proj = {}
+        for label, i in (('begin', 0), ('end', -1)):
+            wv = self.wvs[i]
+            words = wv.syn0[:restrict_vocab] if restrict_vocab else wv.syn0
+            proj[label] = self.project(words, wv.word_vec(word1), wv.word_vec(word2))
+            # TODO extend this and abstract it out to get all projects. Maybe project can just handle it.
+
+        diffs = proj['end'] - proj['begin']
+        absDiffs = np.abs(diffs)
+        movers = argsort(absDiffs, topn=topn, reverse=True)
+        return [(self.wvs[0].index2word[i], diffs[i]) for i in movers]
+
+    def project(self, words, start, end):
+        """
+        Projects `words` onto the vector from `start` to `end`, and then returns a scalar
+        representing the location of the scalar, where 0 means the point was projected onto
+        `start` and 1 means the point was projected onto `end`. 
+        """
+        line = end - start
+        return np.dot(words, line)/np.dot(line, line)
+
 if __name__ == '__main__':
     dc = DiscourseCommunity(["initial-wv", "2010-01-wv"])
     print(dc.greatest_shift(topn=10, restrict_vocab=100))
+    print(dc.greatest_projected_shift('man', 'woman', 10, 1000))
