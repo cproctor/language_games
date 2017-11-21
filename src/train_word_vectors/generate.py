@@ -6,6 +6,8 @@
 from gensim.models.word2vec import Word2Vec, PathLineSentences, LineSentence
 from os.path import join
 import arrow
+from discourse_community import DiscourseCommunity
+from tqdm import tqdm
 
 GOOGLE_NEWS_EMBEDDING_FILE = "../../data/GoogleNews-vectors-negative300.bin"
 HN_MONTHLY_CORPUS_DIR = "../../data/hn_corpus_monthly"
@@ -75,11 +77,24 @@ def save_readonly_word_vectors():
     Now it's included in train_monthly_models
     """
     months = arrow.Arrow.span_range('month', arrow.get(START_MONTH), arrow.get(END_MONTH))
-    for begin, end in months:
+    for begin, end in tqdm(months):
         model = Word2Vec.load(get_month_embedding_filepath(begin.year, begin.month))
         model.wv.save(get_month_word_vectors_filepath(begin.year, begin.month))
         del model
 
+def plot_time_series():
+    years = arrow.Arrow.span_range('year', arrow.get("2008-01"), arrow.get("2017-01"))
+    models = ['initial-wv'] + [get_month_word_vectors_filepath(y.year, y.month) for y, _ in years]
+    labels = ["Google News"] + [y.format('YYYY-MM') for y, _ in years]
+    dc = DiscourseCommunity(models, labels)
+    words = ['smart', 'funny', 'bold', 'thoughtful', 'caring']
+    dc.plot_time_series_projections('man', 'woman', words)
+    return dc
+    
 #model = create_initial_model()
 #train_monthly_models()
-save_readonly_word_vectors()
+#save_readonly_word_vectors()
+dc = plot_time_series()
+
+
+

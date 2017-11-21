@@ -6,18 +6,20 @@ from gensim.models.keyedvectors import KeyedVectors
 from gensim.matutils import argsort
 from tqdm import tqdm
 import numpy as np
+import matplotlib.pyplot as plt
 
 class DiscourseCommunity:
     """
     Models a discourse community with word embeddings of language snapshots.
     """
 
-    def __init__(self, word_vector_files):
+    def __init__(self, word_vector_files, labels=None):
         """
         Pass in a list of strings, each a filepath to a saved KeyedVectors. It is assumed
         that each KeyedVectors instance has the same vocabulary. 
         """
         self.wvs = []
+        self.labels = labels
         for f in tqdm(word_vector_files, "Loading word vectors"):
             wv = KeyedVectors.load(f) 
             wv.init_sims()
@@ -60,6 +62,34 @@ class DiscourseCommunity:
         movers = argsort(absDiffs, topn=topn, reverse=True)
         return [(self.wvs[0].index2word[i], diffs[i]) for i in movers]
 
+    def time_series_projections(self, word1, word2, words):
+        """
+        Computes a projection of `words` onto the line from `word1` to `word2` at each time step.
+        This data can then be plotted. 
+        """
+        projections = []
+        for wv in self.wvs: 
+            vecs = np.array([wv.word_vec(word) for word in words])
+            projections.append(self.project(vecs, wv.word_vec(word1), wv.word_vec(word2)))
+        return projections
+
+    def plot_time_series_projections(self, word1, word2, words):
+        proj = self.time_series_projections(word1, word2, words)
+        X = range(len(self.wvs))
+        for p in zip(*proj):
+            plt.plot(X, p)
+        plt.plot([0, len(self.wvs)-1], [0,0], color="k")
+        plt.plot([0, len(self.wvs)-1], [1,1], color="k")
+        textMargin = 0.2
+        plt.text(len(self.wvs)-1, 0, word1, ha='right', va="bottom")
+        plt.text(len(self.wvs)-1, 1, word2, ha='right', va="bottom")
+        plt.xticks(X, self.labels or X, rotation='vertical')
+        plt.legend(words)
+        plt.xlabel("Language model")
+        plt.ylabel("Relative closeness to anchor words")
+        plt.title("Shift in word meanings projected onto {}-{} axis".format(word1, word2))
+        plt.show()
+
     def project(self, words, start, end):
         """
         Projects `words` onto the vector from `start` to `end`, and then returns a scalar
@@ -73,3 +103,5 @@ if __name__ == '__main__':
     dc = DiscourseCommunity(["initial-wv", "2010-01-wv"])
     print(dc.greatest_shift(topn=10, restrict_vocab=100))
     print(dc.greatest_projected_shift('man', 'woman', 10, 1000))
+    words = ['smart', 'funny', 'bold', 'thoughtful']
+    dc.plot_time_series_projections('man', 'woman', words)
