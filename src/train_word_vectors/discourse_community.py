@@ -54,7 +54,7 @@ class DiscourseCommunity:
         for label, i in (('begin', 0), ('end', -1)):
             wv = self.wvs[i]
             words = wv.syn0[:restrict_vocab] if restrict_vocab else wv.syn0
-            proj[label] = self.project(words, wv.word_vec(word1), wv.word_vec(word2))
+            proj[label] = self.project(words, self.word_vec(wv, word1), self.word_vec(wv, word2))
             # TODO extend this and abstract it out to get all projects. Maybe project can just handle it.
 
         diffs = proj['end'] - proj['begin']
@@ -65,12 +65,12 @@ class DiscourseCommunity:
     def time_series_projections(self, word1, word2, words):
         """
         Computes a projection of `words` onto the line from `word1` to `word2` at each time step.
-        This data can then be plotted. 
+        Anchors may be individual words or lists of words to be averaged. This data can then be plotted. 
         """
         projections = []
         for wv in self.wvs: 
             vecs = np.array([wv.word_vec(word) for word in words])
-            projections.append(self.project(vecs, wv.word_vec(word1), wv.word_vec(word2)))
+            projections.append(self.project(vecs, self.word_vec(wv, word1), self.word_vec(wv, word2)))
         return projections
 
     def plot_time_series_projections(self, word1, word2, words):
@@ -87,7 +87,10 @@ class DiscourseCommunity:
         plt.legend(words)
         plt.xlabel("Language model")
         plt.ylabel("Relative closeness to anchor words")
-        plt.title("Shift in word meanings projected onto {}-{} axis".format(word1, word2))
+        if isinstance(word1, str) and isinstance(word2, str):
+            plt.title("Shift in word meanings projected onto {}-{} axis".format(word1, word2))
+        else:
+            plt.title("Shift in projected word meanings projected")
         plt.show()
 
     def project(self, words, start, end):
@@ -98,6 +101,25 @@ class DiscourseCommunity:
         """
         line = end - start
         return np.dot(words - start, line)/np.dot(line, line)
+
+    def word_vec(self, model, word):
+        """
+        Given a model and a word or a list of words, returns the word vector or mean of word vectors
+        """
+        if isinstance(word, str):
+            return model.word_vec(word)
+        elif isinstance(word, list):
+            return np.mean([self.word_vec(model, w) for w in word], axis=0)
+        else:
+            raise ValueError("Can only look up words and lists of words")
+
+    def word_label(self, word):
+        if isinstance(word, str): 
+            return word
+        elif isinstance(word, list):
+            return "({})".format('-'.join(word))
+        else:
+            raise ValueError("Expecting a string or list of strings")
 
 if __name__ == '__main__':
     dc = DiscourseCommunity(["initial-wv", "2010-01-wv"])
