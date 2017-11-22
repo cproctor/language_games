@@ -97,7 +97,7 @@ class DiscourseCommunity:
         `start` and 1 means the point was projected onto `end`. 
         """
         line = end - start
-        return np.dot(words, line)/np.dot(line, line)
+        return np.dot(words - start, line)/np.dot(line, line)
 
 if __name__ == '__main__':
     dc = DiscourseCommunity(["initial-wv", "2010-01-wv"])
