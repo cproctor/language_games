@@ -90,7 +90,7 @@ class DiscourseCommunity:
         if isinstance(word1, str) and isinstance(word2, str):
             plt.title("Shift in word meanings projected onto {}-{} axis".format(word1, word2))
         else:
-            plt.title("Shift in projected word meanings projected")
+            plt.title("Shift in word meanings projected onto axis between clusters")
         plt.show()
 
     def project(self, words, start, end):
