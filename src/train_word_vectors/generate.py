@@ -6,22 +6,9 @@
 from gensim.models.word2vec import Word2Vec, PathLineSentences, LineSentence
 from os.path import join
 import arrow
-from discourse_community import DiscourseCommunity
+from train_word_vectors.discourse_community import DiscourseCommunity
 from tqdm import tqdm
-
-GOOGLE_NEWS_EMBEDDING_FILE = "../../data/GoogleNews-vectors-negative300.bin"
-HN_MONTHLY_CORPUS_DIR = "../../data/hn_corpus_monthly"
-HN_MONTHLY_CORPUS_TEMPLATE = "hn_corpus_{}_{}.txt"
-HN_MONTHLY_MODELS_DIR = "/Volumes/Chris Proctor Backup/language_games/hn_embeddings_monthly/"
-HN_MONTHLY_MODEL_TEMPLATE = "hn_embed_{}_{}"
-
-HN_MONTHLY_WVS_DIR = "/Volumes/Chris Proctor Backup/language_games/hn_word_vectors_monthly/"
-HN_MONTHLY_WV_TEMPLATE = "hn_wv_{}_{}"
-
-INITIAL_MODEL = join(HN_MONTHLY_MODELS_DIR, 'initial')
-
-START_MONTH = "2007-02"
-END_MONTH = "2017-09"
+from settings import *
 
 def get_month_corpus_filepath(year, month):
     return join(HN_MONTHLY_CORPUS_DIR, HN_MONTHLY_CORPUS_TEMPLATE.format(year, month))

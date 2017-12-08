@@ -19,7 +19,6 @@ class UserGraphBuilder:
     "Given a CSV file of comments, builds a user graph based on users who participated in the same conversation"
 
     def __init__(self, datafile, chunksize=25000, verbose=True):
-        self.total_rows = 12166758
         self.datafile = datafile
         self.chunksize = chunksize
         self.verbose = verbose
@@ -30,9 +29,7 @@ class UserGraphBuilder:
         self.user_ids = {}
         self.user_names = {}
         self.next_user_id = 0
-        progress = tqdm(total=self.total_rows)
-        progress.set_description("Building user graph from comments")
-        for df in pd.read_csv(self.datafile, header=None, chunksize=self.chunksize,
+        for df in pandas.read_csv(self.datafile, header=None, chunksize=self.chunksize,
                 names=["comment_text","points","author","created_at","object_id","parent_id"],
                 usecols=["author","object_id","parent_id"]):
             if not hasattr(self, 'newchunk'): 
@@ -41,7 +38,6 @@ class UserGraphBuilder:
             self.oldchunk = self.newchunk
             self.newchunk = df
             self.build_chunk()
-            progress.update(self.chunksize)
         return self.user_names, self.usersGraph
 
     def build_chunk(self):
@@ -53,7 +49,7 @@ class UserGraphBuilder:
         for commentThread in commentThreads:
             commentsInThread = comments[comments['object_id'].isin(commentThread)]
             userIdsInThread = [self.user_ids[un] for un in commentsInThread.author.values]
-            for u1, u2 in combinations(set(userIdsInThread), 2):
+            for u1, u2 in combinations(set(usersIdsInThread), 2):
                 if not self.usersGraph.IsEdge(u1, u2):
                     self.usersGraph.AddEdge(u1, u2)
         

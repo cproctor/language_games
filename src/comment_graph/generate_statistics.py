@@ -10,12 +10,6 @@ import matplotlib.pyplot as plt
 from timer import Timer
 from random import sample
 
-USER_GRAPH = "../../data/hn_user_graph.txt"
-USER_DEGREE_DIST = "../../data/hn_user_degree_dist.npy"
-USER_DEGREE_CF_HIST = "../../data/hn_user_degree_cf_hist.npy"
-USER_DEGREE_DIST_CHART = "../../results/hn_user_degree_distribution.png"
-USER_DEGREE_DIST_CHART_WITH_EST = "../../results/hn_user_degree_distribution_with_est.png"
-USER_DEGREE_CF_HIST_CHART = "../../results/hn_user_clustering_coefficients.png"
 
 def get_nodes(G):
     "Returns a list of node ids"

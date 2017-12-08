@@ -11,7 +11,7 @@ import snap
 import numpy as np
 import matplotlib.pyplot as plt
 from random import sample
-from helpers import *
+from beer_replication.helpers import *
 from os.path import join
 from os import listdir
 import arrow
@@ -19,26 +19,8 @@ from tqdm import tqdm
 import nltk
 import io
 from collections import Counter, defaultdict
-
-HN_DATA = "../../data/hn_comments_utf8_text.csv"
-HN_DB = "../../data/hn_comments.sqlite3"
-HN_MONTHLY_DIR = "../../data/hn_monthly"
-HN_MONTHLY_TEMPLATE = "hn_comments_{}_{}.csv"
-HN_MONTHLY_COUNTS = "../../data/hn_monthly_count.csv"
-HN_MONTHLY_COUNT_CHART = "../../results/hn_monthly_comments.png"
-HN_DUMMY = "../../data/hn_comments_test.csv"
-
-HN_MONTHLY_CORPUS_DIR = "../../data/hn_corpus_monthly"
-HN_MONTHLY_CORPUS_TEMPLATE = "hn_corpus_{}_{}.txt"
-
-USERS = "../../data/hn_users.csv"
-USER_COUNTS = "../../data/hn_user_counts.csv"
-USER_INTERVALS = "../../data/hn_user_intervals.csv"
-USER_BASE = '../../data/hn_user_base.csv'
-USER_BASE_CHART = '../../results/hn_user_base.png'
-
-START_MONTH = "2007-01"
-END_MONTH = "2017-09"
+import csv
+from settings import *
 
 def get_month_filepath(year, month):
     return join(HN_MONTHLY_DIR, HN_MONTHLY_TEMPLATE.format(year, month))
@@ -115,9 +97,16 @@ if False: # Continued
     plt.legend(["Joining", "Bouncing", "Leaving", "Staying"], loc=2)
     plt.savefig(USER_BASE_CHART)
         
-
-
-
-        
-
-
+if True: # Generate chart for number of upvotes
+    comments = pd.read_csv(HN_DATA, header=None,
+        names=["comment_text","points","author","created_at","object_id","parent_id"],
+        usecols=['points'])
+    upvotes = Counter(comments['points'])
+    with open(UPVOTES_HIST_DATA, 'w') as f:
+        writer = csv.writer(f)
+        writer.writerows(upvotes.items())
+    plt.hist(comments['points'], bins=100, log=True)
+    plt.title("Point values of HN comments")
+    plt.xlabel("Points")
+    plt.ylabel("Number of comments")
+    plt.savefig(UPVOTES_HIST_CHART)

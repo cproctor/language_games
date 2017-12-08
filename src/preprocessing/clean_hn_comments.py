@@ -13,6 +13,7 @@
 from csv import DictReader, DictWriter
 from bs4 import BeautifulSoup as BS
 from tqdm import tqdm
+from settings import *
 
 HN_DATA = "../../data/hn_comments_clean.csv"
 HN_CLEAN_DATA = "../../data/hn_comments_utf8_text.csv"
