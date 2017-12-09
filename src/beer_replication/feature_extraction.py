@@ -33,13 +33,11 @@ class FeatureExtractor:
         features = {}
         for feature_class_name, feature_fn in self.feature_classes.items():
             values = [feature_fn(bins.get_group(i)) for i in range(len(bins))]
-            print(values)
             feature_class = self.values_to_features(values, feature_class_name)
             features.update(feature_class)
         return features
             
 class ActivityFeatureExtractor(FeatureExtractor):
-
     def __init__(self, bin_size=5, start_month="2007-02"):
         "Override with necessary configuration"
         self.bin_size = bin_size
@@ -50,17 +48,43 @@ class ActivityFeatureExtractor(FeatureExtractor):
         }
 
     def bin_frequency(self, comments):
-        print(comments)
-        return np.mean([(comments.iloc[i].created_at - comments.iloc[i-1].created_at).days for i in range(1, len(comments))])
+        return np.mean([(comments.iloc[i].created_at - comments.iloc[i-1].created_at).days 
+                for i in range(1, len(comments))])
 
     def bin_month(self, comments):
         return month_count(comments.created_at.max()) - month_count(self.start_month)
     
-
-# I need some mechanism for caching...
-
 class LinguisticFeatureExtractor(FeatureExtractor):
-    pass
+    "Comments should already have properties 'bigram_score' and 'wv_score'"
+    def __init__(self, bin_size=5):
+        self.bin_size = bin_size
+        self.feature_classes = {
+            "bigram": self.bin_bigram_ce,
+            "wv": self.bin_word_vector_ll
+        }
+
+    def bin_bigram_ce(self, comments):
+        return np.mean(comments['bigram_score'])
+
+    def bin_word_vector_ll(self, comments):
+        return np.mean(comments['wv_score'])
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 

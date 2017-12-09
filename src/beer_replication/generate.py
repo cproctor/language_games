@@ -20,7 +20,7 @@ import io
 from collections import Counter, defaultdict
 import csv
 from settings import *
-from feature_extraction import ActivityFeatureExtractor
+from feature_extraction import ActivityFeatureExtractor, LinguisticFeatureExtractor
 from gensim.models.keyedvectors import KeyedVectors
 import kenlm
 
@@ -113,84 +113,71 @@ if False: # Generate chart for number of upvotes
     plt.ylabel("Number of comments")
     plt.savefig(UPVOTES_HIST_CHART)
 
-if True: # Score each comment we care about so we can later compute linguistic scores
+if False: # Score each comment we care about so we can later compute linguistic scores
     w = 20
     departed = 50
     living = 200
     WORDS_TO_CONSIDER = 30
     
     scored_comments = pd.DataFrame()
-    user_counts = u = pd.read_csv(USER_COUNTS, usecols=['username', 'comment_count'])
-    valid_users = u[(u.comment_count > w) & ((u.comment_count < departed) | u.comment_count >= living)]
+    user_counts = pd.read_csv(USER_COUNTS, usecols=['username', 'comment_count'])
+    valid_users = user_counts[
+        (user_counts.comment_count > w) & 
+        ((user_counts.comment_count < departed) | (user_counts.comment_count >= living))
+    ]
     months = arrow.Arrow.span_range('month', arrow.get(START_MONTH), arrow.get(END_MONTH))
 
     for begin, end in months:
         print(begin.format("YYYY-MM"))
         comments = pd.read_csv(get_month_filepath(begin.year, begin.month))
+        clip = lambda text: text.split()[:WORDS_TO_CONSIDER]
+        comments = comments.assign(clipped=comments['comment_text'].astype(str).apply(clip))
+        comments = comments[comments.clipped.str.len() == WORDS_TO_CONSIDER]
         comments = valid_users.merge(comments, left_on='username', right_on='author')
-        comments['clipped'] = comments['comment_text'].apply(lambda ct: " ".join(ct.split()[:WORDS_TO_CONSIDER]))
 
         bigram_model = kenlm.Model(get_month_lm_filepath(begin.year, begin.month, 'binary'))
-        comments['bigram_score'] = comments['clipped'].map(lambda text: cross_entropy(bigram_model.score(text)))
+        comments = comments.assign(bigram_score = comments['clipped'].apply(
+                lambda text: cross_entropy(bigram_model.score(" ".join(text)))))
         del bigram_model
-
-        wv_model = KeyedVectors.load(get_month_word_vectors_filepath(begin.year, begin.month))
-        comments['wv_score'] = comments['clipped'].apply(lambda text: wv_model.score(text.split()))
+        wv_model = KeyedVectors.load(get_month_embedding_filepath(begin.year, begin.month))
+        comments = comments.assign(wv_score = cross_entropy(wv_model.score(comments.clipped)))
         del wv_model
-        
-        scored_comments.append(comments)
-
+        scored_comments = scored_comments.append(comments[['object_id', 'bigram_score', 
+                'wv_score', 'created_at', 'username']])
     scored_comments.to_csv(HN_SCORED_COMMENTS)
 
-
-# EVERYTHING PAST HERE IS A DRAFT...
+# OLD SCORING AND LABELING did not consider that short comments would be stripped. So we need to re-label
+# and re-filter the comments.
 if False:
-    comments = pd.read_csv(HN_DATA, header=None,
-            names=["comment_text","points","author","created_at","object_id","parent_id"],
-            parse_dates=['created_at'])
-    comments = comments.merge(user_counts, left_on='username', right_on='username')
-    comments = comments[(comments.comment_count > w) & 
-            ((comments.comment_count < departed) | comments.comment_count > living)]
-    comments.month = 12 * comments.created_at.dt.year + comments.created_at.dt.month
-    
-
-    comment_scores = comments['object_id']
-
-if False: # Generate train, dev, test set split of users, and generate features for each.
     users = pd.read_csv(USERS, usecols=['id', 'username'])
-    comments = pd.read_csv(HN_DATA, header=None,
-            names=["comment_text","points","author","created_at","object_id","parent_id"],
-            parse_dates=['created_at'])
-    user_counts = pd.read_csv(USER_COUNTS, usecols=['username', 'comment_count'])
-    users = users.merge(user_counts, left_on='username', right_on='username')
-    #train, validate, test = np.split(users.sample(frac=1), [int(.6*len(users)), int(.8*len(users))])
-    dummy = users.sample(100)
-    dummy = classify_users(dummy, 20, 40, 200)
+    comments = pd.read_csv(HN_SCORED_COMMENTS, parse_dates=['created_at'])
+    counts = Counter(comments.username)
+    user_counts = pd.DataFrame({'username': counts.keys(), 'comment_count': counts.values()})
+    users = user_counts.merge(users, left_on='username', right_on='username')
+    users = classify_users(users, 20, 50, 200)
+    users.to_csv(HN_CLASSIFIED_USERS)
 
-    examples = pd.DataFrame()
+# Working with HN_SCORED_COMMENTS (already filtered to include only comments from departed or living users),
+# map users (and comments) -> examples (features and labels)
+# Then generate train, dev, test set split of users.
+if True: 
     activityFE = ActivityFeatureExtractor()
-
-    for u in dummy:
-        print(u.username)
-        uc = comments[comments.username == u.username]
-        features = activityFE.extract_features(uc[:20])
-        features['label'] = u.label
-        examples.append(features)
-
-# Get all comments. 
-# Merge on user_counts
-# Filter out user counts we don't care about.
-# Go through chronologically, generating scores for each comment we care about. Save to csv
-
-# Now group comments by user.
-# For each user, take the first 20. 
-# Make features, lookup scores, save features to CSV. [username, features...., label]
-
-# Divide users into train, dev, test
+    linguisticFE = LinguisticFeatureExtractor()
+    examples = []
     
+    users = pd.read_csv(HN_CLASSIFIED_USERS, usecols=['id', 'username', 'label'])
+    comments = pd.read_csv(HN_SCORED_COMMENTS, parse_dates=['created_at'])
+    for i, u in tqdm(users.iterrows(), total=17896):
+        uc = comments[comments.username == u.username][:20]
+        if len(uc) < 20: continue # I checked before for user comment counts, but 
+        example = {'label': u.label, 'username': u.username}
+        example.update(activityFE.extract_features(uc))
+        example.update(linguisticFE.extract_features(uc))
+        examples.append(example)
 
-
-
-
-
+    examples = pd.DataFrame(examples)
+    train, dev, test = np.split(examples.sample(frac=1), [int(.6*len(example)), int(.8*len(example))])
+    train.to_csv(TRAIN_EXAMPLES)
+    dev.to_csv(DEV_EXAMPLES)
+    test.to_csv(TEST_EXAMPLES)
 

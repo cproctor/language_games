@@ -11,17 +11,17 @@ HN_CLEAN_DATA = join(LOCAL_DATA, "hn_comments_utf8_text.csv")
 KENLM_LMPLZ = "../lib/kenlm/build/bin/lmplz"
 KENLM_BUILD_BINARY = "../lib/kenlm/build/bin/build_binary"
 
-HN_MONTHLY_DIR = join(LOCAL_DATA, "hn_monthly")
-HN_MONTHLY_WEIGHTED_DIR = join(LOCAL_DATA, "hn_monthly_weighted")
+HN_MONTHLY_DIR = join(REMOTE_DATA, "hn_monthly")
+HN_MONTHLY_WEIGHTED_DIR = join(REMOTE_DATA, "hn_monthly_weighted")
 HN_MONTHLY_TEMPLATE = "hn_comments_{}_{}.csv"
 HN_MONTHLY_COUNTS = join(LOCAL_DATA, "hn_monthly_count.csv")
 HN_MONTHLY_COUNT_CHART = "../results/hn_monthly_comments.png"
 
 HN_MONTHLY_CORPUS_DIR = join(LOCAL_DATA, "hn_corpus_monthly")
-HN_MONTHLY_WEIGHTED_CORPUS_DIR = join(LOCAL_DATA, "hn_corpus_monthly_weighted")
+HN_MONTHLY_WEIGHTED_CORPUS_DIR = join(REMOTE_DATA, "hn_corpus_monthly_weighted")
 HN_MONTHLY_CORPUS_TEMPLATE = "hn_corpus_{}_{}.txt"
 
-HN_MONTHLY_LM_DIR = join(LOCAL_DATA, "hn_monthly_lm")
+HN_MONTHLY_LM_DIR = join(REMOTE_DATA, "hn_monthly_lm")
 HN_MONTHLY_LM_TEMPLATE = "lm_{}_{}.{}"
 
 START_MONTH = "2007-02"
@@ -55,6 +55,13 @@ HN_MONTHLY_WV_TEMPLATE = "hn_wv_{}_{}"
 INITIAL_MODEL = join(HN_MONTHLY_MODELS_DIR, 'initial')
 
 HN_SCORED_COMMENTS = join(REMOTE_DATA, 'scored_comments.csv')
+
+# All users who have at least 20 comments (of at least 30 words)
+HN_CLASSIFIED_USERS = join(REMOTE_DATA, 'classified_users.csv') 
+
+TRAIN_EXAMPLES = join(LOCAL_DATA, 'train_20_50_200.csv')
+DEV_EXAMPLES = join(LOCAL_DATA, 'dev_20_50_200.csv')
+TEST_EXAMPLES = join(LOCAL_DATA, 'test_20_50_200.csv')
 
 def get_month_filepath(year, month):
     "Returns the path to a CSV of a month's comments"
