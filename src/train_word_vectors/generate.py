@@ -6,18 +6,9 @@
 from gensim.models.word2vec import Word2Vec, PathLineSentences, LineSentence
 from os.path import join
 import arrow
-from train_word_vectors.discourse_community import DiscourseCommunity
+from discourse_community import DiscourseCommunity
 from tqdm import tqdm
 from settings import *
-
-def get_month_corpus_filepath(year, month):
-    return join(HN_MONTHLY_CORPUS_DIR, HN_MONTHLY_CORPUS_TEMPLATE.format(year, month))
-
-def get_month_embedding_filepath(year, month):
-    return join(HN_MONTHLY_MODELS_DIR, HN_MONTHLY_MODEL_TEMPLATE.format(year, month))
-
-def get_month_word_vectors_filepath(year, month):
-    return join(HN_MONTHLY_WVS_DIR, HN_MONTHLY_WV_TEMPLATE.format(year, month))
 
 def file_len(fname):
     with open(fname) as f:
@@ -41,7 +32,7 @@ def create_initial_model():
     model.save(INITIAL_MODEL)
     return model
 
-def train_monthly_models():
+def train_monthly_models(weighted=False, epochs=10):
     """
     Load the initial model (vocabulary with Google-News-trained vectors), and then iterate
     over each month's corpus, training and saving the model. This takes ~3 hours, and requires
@@ -51,11 +42,11 @@ def train_monthly_models():
     months = arrow.Arrow.span_range('month', arrow.get(START_MONTH), arrow.get(END_MONTH))
     for begin, end in months:
         print("TRAINING {}".format(begin.format("YYYY-MM")))
-        corpus = get_month_corpus_filepath(begin.year, begin.month)
+        corpus = get_month_corpus_filepath(begin.year, begin.month, weighted)
         sentences = LineSentence(corpus)
-        model.train(sentences, epochs=10, start_alpha=0.1, total_examples=file_len(corpus))
-        model.save(get_month_embedding_filepath(begin.year, begin.month))
-        model.wv.save(get_month_word_vectors_filepath(begin.year, begin.month))
+        model.train(sentences, epochs=epochs, start_alpha=0.1, total_examples=file_len(corpus))
+        model.save(get_month_embedding_filepath(begin.year, begin.month, weighted))
+        model.wv.save(get_month_word_vectors_filepath(begin.year, begin.month, weighted))
 
 def save_readonly_word_vectors():
     """
@@ -79,9 +70,9 @@ def plot_time_series():
     return dc
     
 #model = create_initial_model()
-#train_monthly_models()
+train_monthly_models(weighted=True, epochs=5)
 #save_readonly_word_vectors()
-dc = plot_time_series()
+#dc = plot_time_series()
 
 
 

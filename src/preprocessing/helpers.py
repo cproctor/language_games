@@ -56,6 +56,7 @@ def get_thread_text(comments):
     "Groups comments into threads, then concatenates the text of each thread."
     comments.object_id = comments.object_id.astype(int)
     comments.parent_id = comments.parent_id.astype(int)
+    comments.points = comments.points.astype(float).astype(int)
     nodes = set(comments.object_id).union(set(comments.parent_id))
     commentsGraph = snap.TUNGraph.New()
     for node in nodes: 
@@ -74,10 +75,11 @@ def get_thread_text(comments):
         threadText.append(" ".join(commentsInThread))
     return " ".join(threadText)
 
-def tokenize(commentsfile):
+def tokenize(commentsfile, weighted=False):
     """
     Converts a comments file into one-sentence-per-line tokens. 
-    1. Group comments into threads
+    1. [if weighted] duplicate comments according to their weight]
+    2. Group comments into threads
     3. Split into sentences
     4. Tokenize each sentence
 
@@ -85,7 +87,18 @@ def tokenize(commentsfile):
         commentsfile: filename (with headers)
     """
     with io.open(commentsfile, 'r', encoding='utf-8') as cf:
-        comments = pd.read_csv(cf, usecols=['comment_text', 'object_id', 'parent_id'])
+        comments = pd.read_csv(cf, usecols=['comment_text', 'object_id', 'parent_id', 'points'])
+
+    if weighted:
+        comments.points = comments.points.astype(float).astype(int)
+        weightedComments = pd.DataFrame()
+        for count in comments.points.unique():
+            if count > 1:
+                cComments = comments[comments.points == count]
+                weightedComments = weightedComments.append([cComments] * (count-1), ignore_index=True)
+        comments = comments.append(weightedComments)
+        comments = comments.sample(frac=1).reset_index(drop=True) # shuffles comment order
+
     text = get_thread_text(comments)
     sentences = nltk.sent_tokenize(text)
     return [tokenizer.tokenize(sentence) for sentence in sentences]

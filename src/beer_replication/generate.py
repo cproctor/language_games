@@ -7,11 +7,10 @@
 
 # author cp
 
-import snap
 import numpy as np
 import matplotlib.pyplot as plt
 from random import sample
-from beer_replication.helpers import *
+from helpers import *
 from os.path import join
 from os import listdir
 import arrow
@@ -21,6 +20,9 @@ import io
 from collections import Counter, defaultdict
 import csv
 from settings import *
+from feature_extraction import ActivityFeatureExtractor
+from gensim.models.keyedvectors import KeyedVectors
+import kenlm
 
 def get_month_filepath(year, month):
     return join(HN_MONTHLY_DIR, HN_MONTHLY_TEMPLATE.format(year, month))
@@ -97,7 +99,7 @@ if False: # Continued
     plt.legend(["Joining", "Bouncing", "Leaving", "Staying"], loc=2)
     plt.savefig(USER_BASE_CHART)
         
-if True: # Generate chart for number of upvotes
+if False: # Generate chart for number of upvotes
     comments = pd.read_csv(HN_DATA, header=None,
         names=["comment_text","points","author","created_at","object_id","parent_id"],
         usecols=['points'])
@@ -110,3 +112,85 @@ if True: # Generate chart for number of upvotes
     plt.xlabel("Points")
     plt.ylabel("Number of comments")
     plt.savefig(UPVOTES_HIST_CHART)
+
+if True: # Score each comment we care about so we can later compute linguistic scores
+    w = 20
+    departed = 50
+    living = 200
+    WORDS_TO_CONSIDER = 30
+    
+    scored_comments = pd.DataFrame()
+    user_counts = u = pd.read_csv(USER_COUNTS, usecols=['username', 'comment_count'])
+    valid_users = u[(u.comment_count > w) & ((u.comment_count < departed) | u.comment_count >= living)]
+    months = arrow.Arrow.span_range('month', arrow.get(START_MONTH), arrow.get(END_MONTH))
+
+    for begin, end in months:
+        print(begin.format("YYYY-MM"))
+        comments = pd.read_csv(get_month_filepath(begin.year, begin.month))
+        comments = valid_users.merge(comments, left_on='username', right_on='author')
+        comments['clipped'] = comments['comment_text'].apply(lambda ct: " ".join(ct.split()[:WORDS_TO_CONSIDER]))
+
+        bigram_model = kenlm.Model(get_month_lm_filepath(begin.year, begin.month, 'binary'))
+        comments['bigram_score'] = comments['clipped'].map(lambda text: cross_entropy(bigram_model.score(text)))
+        del bigram_model
+
+        wv_model = KeyedVectors.load(get_month_word_vectors_filepath(begin.year, begin.month))
+        comments['wv_score'] = comments['clipped'].apply(lambda text: wv_model.score(text.split()))
+        del wv_model
+        
+        scored_comments.append(comments)
+
+    scored_comments.to_csv(HN_SCORED_COMMENTS)
+
+
+# EVERYTHING PAST HERE IS A DRAFT...
+if False:
+    comments = pd.read_csv(HN_DATA, header=None,
+            names=["comment_text","points","author","created_at","object_id","parent_id"],
+            parse_dates=['created_at'])
+    comments = comments.merge(user_counts, left_on='username', right_on='username')
+    comments = comments[(comments.comment_count > w) & 
+            ((comments.comment_count < departed) | comments.comment_count > living)]
+    comments.month = 12 * comments.created_at.dt.year + comments.created_at.dt.month
+    
+
+    comment_scores = comments['object_id']
+
+if False: # Generate train, dev, test set split of users, and generate features for each.
+    users = pd.read_csv(USERS, usecols=['id', 'username'])
+    comments = pd.read_csv(HN_DATA, header=None,
+            names=["comment_text","points","author","created_at","object_id","parent_id"],
+            parse_dates=['created_at'])
+    user_counts = pd.read_csv(USER_COUNTS, usecols=['username', 'comment_count'])
+    users = users.merge(user_counts, left_on='username', right_on='username')
+    #train, validate, test = np.split(users.sample(frac=1), [int(.6*len(users)), int(.8*len(users))])
+    dummy = users.sample(100)
+    dummy = classify_users(dummy, 20, 40, 200)
+
+    examples = pd.DataFrame()
+    activityFE = ActivityFeatureExtractor()
+
+    for u in dummy:
+        print(u.username)
+        uc = comments[comments.username == u.username]
+        features = activityFE.extract_features(uc[:20])
+        features['label'] = u.label
+        examples.append(features)
+
+# Get all comments. 
+# Merge on user_counts
+# Filter out user counts we don't care about.
+# Go through chronologically, generating scores for each comment we care about. Save to csv
+
+# Now group comments by user.
+# For each user, take the first 20. 
+# Make features, lookup scores, save features to CSV. [username, features...., label]
+
+# Divide users into train, dev, test
+    
+
+
+
+
+
+

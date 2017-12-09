@@ -120,5 +120,16 @@ class LongitudinalCE:
         plt.title("Hacker News Community change over time")
         plt.show()
 
+def classify_users(users, visible, departed, living):
+    """
+    Classifies and filters users according to visible, departed, living. 
+    Any users that have between visible and departed are departed; any with more
+    than living are living. Others are filtered out.
+    """
+    users = users.assign(label=-1)
+    users.loc[(users.comment_count > visible) & (users.comment_count < departed), 'label'] = 0
+    users.loc[users.comment_count > living, 'label'] = 1
+    return users[users.label != -1]
+
 
 

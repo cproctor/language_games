@@ -7,20 +7,12 @@ import snap
 import numpy as np
 import matplotlib.pyplot as plt
 from random import sample
-from preprocessing.helpers import *
+from helpers import *
 from os.path import join
 from os import listdir
 import arrow
 import subprocess
-
-def get_month_filepath(year, month):
-    return join(HN_MONTHLY_DIR, HN_MONTHLY_TEMPLATE.format(year, month))
-
-def get_month_corpus_filepath(year, month):
-    return join(HN_MONTHLY_CORPUS_DIR, HN_MONTHLY_CORPUS_TEMPLATE.format(year, month))
-
-def get_month_lm_filepath(year, month, ext="arpa"):
-    return join(HN_MONTHLY_LM_DIR, HN_MONTHLY_LM_TEMPLATE.format(year, month, ext))
+from settings import *
 
 if False: # Split comments into monthly files
     counts = split_comments_by_month(HN_CLEAN_DATA, get_month_filepath, 
@@ -41,7 +33,7 @@ if False: # Generate monthly tokens
         with open(get_month_corpus_filepath(begin.year, begin.month), 'w') as tokensfile:
             tokensfile.write("\n".join([(" ".join(s)).lower() for s in tokens]).encode('ascii', 'ignore'))
 
-if True: # Build langauge models
+if False: # Build langauge models
     months = arrow.Arrow.span_range('month', arrow.get(START_MONTH), arrow.get(END_MONTH))
     for begin, end in months:
         print(begin.format("YYYY-MM"))
@@ -62,5 +54,14 @@ if True: # Build langauge models
         ])
         print("CMD: " + buildBinaryCmd)
         subprocess.check_call(buildBinaryCmd, shell=True)
+
+# NOW DO IT AGAIN, BUT WEIGHTED
+if True: # Generate monthly tokens
+    months = arrow.Arrow.span_range('month', arrow.get(START_MONTH), arrow.get(END_MONTH))
+    for begin, end in months:
+        print(begin.format("YYYY-MM"))
+        tokens = tokenize(get_month_filepath(begin.year, begin.month), weighted=True)
+        with open(get_month_corpus_filepath(begin.year, begin.month, weighted=True), 'w') as tokensfile:
+            tokensfile.write("\n".join([(" ".join(s)).lower() for s in tokens]).encode('ascii', 'ignore'))
         
     
