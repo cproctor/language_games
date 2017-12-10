@@ -18,28 +18,47 @@ train_y = train.label.values
 dev = pd.read_csv(DEV_EXAMPLES)
 dev_y = dev.label.values
 
-print("ACTIVITY")
+results = []
+
+# ======= ACTIVITY ==============
 train_X = train[feature_class('freq') + feature_class('month')]
 dev_X = dev[feature_class('freq') + feature_class('month')]
 model = LogisticRegression()
 model.fit(train_X, train_y)
+
+yHat = model.predict(train_X)
+p, r, f1, s = precision_recall_fscore_support(train_y, yHat)
+results.append(["Train", "Activity", p[1], r[1], f1[1], s[1]])
+
 yHat = model.predict(dev_X)
 p, r, f1, s = precision_recall_fscore_support(dev_y, yHat)
-print(tabulate(np.array([p,r,f1,s]).T, headers=['precision', 'recall', 'f1', 'support']))
+results.append(["Dev", "Activity", p[1], r[1], f1[1], s[1]])
 
-print("ACTIVITY + BIGRAM_LINGUISTIC")
+# ======= ACTIVITY + LINGUISTIC BIGRAM ==============
 train_X = train[feature_class('freq') + feature_class('month') + feature_class('bigram')]
 dev_X = dev[feature_class('freq') + feature_class('month') + feature_class('bigram')]
 model = LogisticRegression()
 model.fit(train_X, train_y)
+
+yHat = model.predict(train_X)
+p, r, f1, s = precision_recall_fscore_support(train_y, yHat)
+results.append(["Train", "Activity + bigram CE", p[1], r[1], f1[1], s[1]])
+
 yHat = model.predict(dev_X)
 p, r, f1, s = precision_recall_fscore_support(dev_y, yHat)
-print(tabulate(np.array([p,r,f1,s]).T, headers=['precision', 'recall', 'f1', 'support']))
+results.append(["Dev", "Activity + bigram CE", p[1], r[1], f1[1], s[1]])
 
-print("ACTIVITY + WV_LINGUISTIC")
+# ======= ACTIVITY + WORD VECTOR BIGRAM ==============
 train_X = train[feature_class('freq') + feature_class('month') + feature_class('wv')]
 model = LogisticRegression()
 model.fit(train_X, train_y)
+
+yHat = model.predict(train_X)
+p, r, f1, s = precision_recall_fscore_support(train_y, yHat)
+results.append(["Train", "Activity + Word Vector CE", p[1], r[1], f1[1], s[1]])
+
 yHat = model.predict(dev_X)
 p, r, f1, s = precision_recall_fscore_support(dev_y, yHat)
-print(tabulate(np.array([p,r,f1,s]).T, headers=['precision', 'recall', 'f1', 'support']))
+results.append(["Dev", "Activity + Word Vector CE", p[1], r[1], f1[1], s[1]])
+
+print(tabulate(results, headers=['dataset', 'model', 'precision', 'recall', 'f1', 'support'], tablefmt='html'))

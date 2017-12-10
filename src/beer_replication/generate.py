@@ -160,7 +160,7 @@ if False:
 # Working with HN_SCORED_COMMENTS (already filtered to include only comments from departed or living users),
 # map users (and comments) -> examples (features and labels)
 # Then generate train, dev, test set split of users.
-if True: 
+if False: 
     activityFE = ActivityFeatureExtractor()
     linguisticFE = LinguisticFeatureExtractor()
     examples = []
@@ -176,8 +176,43 @@ if True:
         examples.append(example)
 
     examples = pd.DataFrame(examples)
-    train, dev, test = np.split(examples.sample(frac=1), [int(.6*len(example)), int(.8*len(example))])
+    train, dev, test = np.split(examples.sample(frac=1), [int(.6*len(examples)), int(.8*len(examples))])
     train.to_csv(TRAIN_EXAMPLES)
     dev.to_csv(DEV_EXAMPLES)
     test.to_csv(TEST_EXAMPLES)
+
+# OK, so our original word vector results aren't great. To test out more features, I want a quicker mapping
+# of users to their comments. Now I'm going to generate word vector features
+if True: 
+    comments = pd.read_csv(HN_SCORED_COMMENTS_FULL, usecols=['comment_text', 'created_at'],
+            parse_dates=['created_at'])
+    comment_wvs = np.zeros((len(comments), 300))
+    groups = comments.groupby([comments.created_at.dt.year, comments.created_at.dt.month], sort=False)
+    for (year, month), month_comments in groups:
+        print("{}-{}".format(year, month))
+        wv_model = KeyedVectors.load(get_month_word_vectors_filepath(year, month))
+        for ix, c in month_comments.iterrows():
+            cl = [w for w in str(c.comment_text).split() if w in wv_model.vocab]
+            if any(cl):
+                wv = wv_model.wv[cl].mean(axis=0)  
+                comment_wvs[ix] = wv
+        del wv_model
+    np.save(HN_SCORED_COMMENT_BOW_WV, comment_wvs)
+        
+if False:
+    feature_collection = []
+    users = pd.read_csv(HN_CLASSIFIED_USERS, usecols=['id', 'username', 'label'])
+    comments = pd.read_csv(HN_SCORED_COMMENTS_FULL, parse_dates=['created_at'])
+    grouped_comments = comments.groupby('username')
+    for username, comments in tqdm(grouped_comments, total=17895):
+        features = {'username': username}
+        bins = comments[:20].groupby(np.arange(20) // 5)
+        #for b, bin_comments in bins:
+        
+    
+
+
+
+
+
 
