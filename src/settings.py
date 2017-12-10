@@ -3,6 +3,7 @@
 from os.path import join
 
 LOCAL_DATA = "/Users/chris/Documents/4-PhD/Research/ActiveProjects/LanguageIdeology/language_games/data"
+RESULTS = "/Users/chris/Documents/4-PhD/Research/ActiveProjects/LanguageIdeology/language_games/results"
 REMOTE_DATA = "/Volumes/Chris Proctor Backup/language_games/data"
 
 HN_DATA = join(LOCAL_DATA, "hn_comments_clean.csv")
@@ -55,6 +56,7 @@ HN_MONTHLY_WV_TEMPLATE = "hn_wv_{}_{}"
 INITIAL_MODEL = join(HN_MONTHLY_MODELS_DIR, 'initial')
 
 HN_SCORED_COMMENTS = join(REMOTE_DATA, 'scored_comments.csv')
+HN_SCORED_COMMENTS_INITIAL_MODEL = join(REMOTE_DATA, 'scored_comments_initial_model.csv')
 HN_SCORED_COMMENTS_FULL = join(REMOTE_DATA, 'scored_comments_bloated.csv')
 HN_SCORED_COMMENT_BOW_WV = join(REMOTE_DATA, 'scored_comment_bow_wvs.npy')
 
@@ -64,6 +66,13 @@ HN_CLASSIFIED_USERS = join(REMOTE_DATA, 'classified_users.csv')
 TRAIN_EXAMPLES = join(LOCAL_DATA, 'train_20_50_200.csv')
 DEV_EXAMPLES = join(LOCAL_DATA, 'dev_20_50_200.csv')
 TEST_EXAMPLES = join(LOCAL_DATA, 'test_20_50_200.csv')
+
+WV_INITIAL_MODEL_FEATURES = join(REMOTE_DATA, 'features_wv_initial_model.csv')
+
+LIFE_JACCARD_CHART = join(RESULTS, "life_stage_jaccard.png")
+LIFE_DIST_BIGRAM_CHART = join(RESULTS, "life_stage_distance_bigram.png")
+LIFE_DIST_WV_CHART = join(RESULTS, "life_stage_distance_wv.png")
+
 
 def get_month_filepath(year, month):
     "Returns the path to a CSV of a month's comments"

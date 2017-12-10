@@ -24,6 +24,7 @@ class FeatureExtractor:
         "Given a list of values, returns a dict of features, include the argmax"
         features = {"{}_{}".format(feature_name, i) : v for i, v in enumerate(values)}
         features["{}_max".format(feature_name)] = np.argmax(values)
+        features["{}_min".format(feature_name)] = np.argmin(values)
         return features
 
     def extract_features(self, comments):
@@ -68,6 +69,17 @@ class LinguisticFeatureExtractor(FeatureExtractor):
 
     def bin_word_vector_ll(self, comments):
         return np.mean(comments['wv_score'])
+
+class InitialModelFeatureExtractor(FeatureExtractor):
+    "Comments should already have property 'initial_wv_score'"
+    def __init__(self, bin_size=5):
+        self.bin_size = bin_size
+        self.feature_classes = {
+            "initial_wv": self.bin_word_vector_ll
+        }
+
+    def bin_word_vector_ll(self, comments):
+        return np.mean(comments['initial_wv_score'])
 
 
 

@@ -86,6 +86,7 @@ def tokenize(commentsfile):
     return [tokenizer.tokenize(sentence) for sentence in sentences]
     
 def cross_entropy(perplexity):
+    if perplexity <= 0: return -100
     return np.log(-perplexity)/np.log(2)
 
 def smooth(y, box_pts):

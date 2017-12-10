@@ -20,7 +20,7 @@ import io
 from collections import Counter, defaultdict
 import csv
 from settings import *
-from feature_extraction import ActivityFeatureExtractor, LinguisticFeatureExtractor
+from feature_extraction import ActivityFeatureExtractor, LinguisticFeatureExtractor, InitialModelFeatureExtractor
 from gensim.models.keyedvectors import KeyedVectors
 import kenlm
 
@@ -146,6 +146,21 @@ if False: # Score each comment we care about so we can later compute linguistic 
                 'wv_score', 'created_at', 'username']])
     scored_comments.to_csv(HN_SCORED_COMMENTS)
 
+if False: #Score comments based on the everyday language model (Google News)
+    WORDS_TO_CONSIDER = 30
+    COMMENTS_UPPER_BOUND = 7000000 # For word2vec scoring algorithm
+    
+    comments = pd.read_csv(HN_SCORED_COMMENTS_FULL, usecols=['object_id', 'comment_text'])
+    wv_model = KeyedVectors.load(INITIAL_MODEL)
+
+    clip = lambda text: text.split()[:WORDS_TO_CONSIDER]
+    comments = comments.assign(clipped=comments['comment_text'].astype(str).apply(clip))
+    comments = comments[comments.clipped.str.len() == WORDS_TO_CONSIDER]
+
+    comments = comments.assign(initial_wv_score = cross_entropy(wv_model.score(comments.clipped, 
+            total_sentences=COMMENTS_UPPER_BOUND)))
+    comments.to_csv(HN_SCORED_COMMENTS_INITIAL_MODEL)
+
 # OLD SCORING AND LABELING did not consider that short comments would be stripped. So we need to re-label
 # and re-filter the comments.
 if False:
@@ -181,9 +196,27 @@ if False:
     dev.to_csv(DEV_EXAMPLES)
     test.to_csv(TEST_EXAMPLES)
 
+# Now that I have added in the inital comment scores, I want to bin them up to use as examples
+if True: 
+    linguisticFE = InitialModelFeatureExtractor()
+    examples = []
+    
+    users = pd.read_csv(HN_CLASSIFIED_USERS, usecols=['id', 'username', 'label'])
+    comments = pd.read_csv(HN_SCORED_COMMENTS, usecols=['username', 'created_at'], parse_dates=['created_at'])
+    scores = pd.read_csv(HN_SCORED_COMMENTS_INITIAL_MODEL)
+    comments = comments.merge(scores, left_index=True, right_index=True)
+    user_comment_groups = comments.groupby('username')
+    for username, user_comments in tqdm(user_comment_groups, total=17896):
+        if len(user_comments) < 20: continue # I checked before for user comment counts, but just in case
+        example = {'username': username}
+        example.update(linguisticFE.extract_features(user_comments[:20]))
+        examples.append(example)
+    examples = pd.DataFrame(examples)
+    examples.to_csv(WV_INITIAL_MODEL_FEATURES)
+
 # OK, so our original word vector results aren't great. To test out more features, I want a quicker mapping
 # of users to their comments. Now I'm going to generate word vector features
-if True: 
+if False: 
     comments = pd.read_csv(HN_SCORED_COMMENTS_FULL, usecols=['comment_text', 'created_at'],
             parse_dates=['created_at'])
     comment_wvs = np.zeros((len(comments), 300))
@@ -199,6 +232,7 @@ if True:
         del wv_model
     np.save(HN_SCORED_COMMENT_BOW_WV, comment_wvs)
         
+# JUNK
 if False:
     feature_collection = []
     users = pd.read_csv(HN_CLASSIFIED_USERS, usecols=['id', 'username', 'label'])
