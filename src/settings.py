@@ -55,6 +55,8 @@ HN_MONTHLY_WV_TEMPLATE = "hn_wv_{}_{}"
 INITIAL_MODEL = join(HN_MONTHLY_MODELS_DIR, 'initial')
 
 HN_SCORED_COMMENTS = join(REMOTE_DATA, 'scored_comments.csv')
+HN_SCORED_COMMENTS_FULL = join(REMOTE_DATA, 'scored_comments_bloated.csv')
+HN_SCORED_COMMENT_BOW_WV = join(REMOTE_DATA, 'scored_comment_bow_wvs.npy')
 
 # All users who have at least 20 comments (of at least 30 words)
 HN_CLASSIFIED_USERS = join(REMOTE_DATA, 'classified_users.csv') 
