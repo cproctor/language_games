@@ -3,6 +3,7 @@
 # Use a logistic transform before plotting
 
 from gensim.models.keyedvectors import KeyedVectors
+from gensim.models.word2vec import Word2Vec
 from gensim.matutils import argsort
 from tqdm import tqdm
 import numpy as np
@@ -18,12 +19,12 @@ class DiscourseCommunity:
         Pass in a list of strings, each a filepath to a saved KeyedVectors. It is assumed
         that each KeyedVectors instance has the same vocabulary. 
         """
-        self.wvs = []
+        self.models = []
         self.labels = labels
         for f in tqdm(word_vector_files, "Loading word vectors"):
-            wv = KeyedVectors.load(f) 
-            wv.init_sims()
-            self.wvs.append(wv)
+            model = Word2Vec.load(f) 
+            model.wv.init_sims()
+            self.models.append(model)
 
     def greatest_shift(self, topn=10, restrict_vocab=None):
         """
@@ -34,33 +35,32 @@ class DiscourseCommunity:
         restrict_vocab: instead of considering the entire vocabulary, consider only a slice. Only 
             makes sense if the vocabulary is sorted by frequency. 
         """
-        if len(self.wvs) < 2: raise ValueError("Cannot compute word shifts with fewer than 2 embeddings")
-        begin = self.wvs[0].syn0norm[:restrict_vocab] if restrict_vocab else self.wvs[0].syn0norm
-        end = self.wvs[-1].syn0norm[:restrict_vocab] if restrict_vocab else self.wvs[-1].syn0norm
-        shifts = (begin *  end).sum(axis=1) # Dot product only for each word against itself
+        if len(self.models) < 2: raise ValueError("Cannot compute word shifts with fewer than 2 embeddings")
+        begin = self.models[0].wv.syn0[:restrict_vocab] if restrict_vocab else self.models[0].wv.syn0
+        end = self.models[-1].wv.syn0[:restrict_vocab] if restrict_vocab else self.models[-1].wv.syn0
+        shifts = np.sqrt(np.einsum('ij,ij->i', (begin-end), (begin-end)))
 
-        if not topn: return shifts # Just a vector of cosine similiarities
+        if not topn: return shifts # Just a vector of distances
 
-        best = argsort(shifts, topn=topn, reverse=False) # Low cosine similarity means far apart
-        return [(self.wvs[0].index2word[i], shifts[i]) for i in best]
+        best = argsort(shifts, topn=topn, reverse=True) 
+        return [(self.models[0].wv.index2word[i], shifts[i]) for i in best]
 
-    def greatest_projected_shift(self, word1, word2, topn=10, restrict_vocab=None):
+    def greatest_projected_shift(self, word1, word2, topn=10, restrict_vocab=None, first_model=0, last_model=-1):
         """
         Projects words onto the line spanning `word1` and `word2`, once for the first model
         and once for the last model. Returns the words with the highest absolute value of shift between
         the two models
         """
         proj = {}
-        for label, i in (('begin', 0), ('end', -1)):
-            wv = self.wvs[i]
-            words = wv.syn0[:restrict_vocab] if restrict_vocab else wv.syn0
-            proj[label] = self.project(words, self.word_vec(wv, word1), self.word_vec(wv, word2))
-            # TODO extend this and abstract it out to get all projects. Maybe project can just handle it.
+        for label, i in (('begin', first_model), ('end', last_model)):
+            model = self.models[i]
+            words = model.wv.syn0[:restrict_vocab] if restrict_vocab else model.wv.syn0
+            proj[label] = self.project(words, self.word_vec(model, word1), self.word_vec(model, word2))
 
         diffs = proj['end'] - proj['begin']
         absDiffs = np.abs(diffs)
         movers = argsort(absDiffs, topn=topn, reverse=True)
-        return [(self.wvs[0].index2word[i], diffs[i]) for i in movers]
+        return [(self.models[0].wv.index2word[i], diffs[i]) for i in movers]
 
     def time_series_projections(self, word1, word2, words):
         """
@@ -68,14 +68,14 @@ class DiscourseCommunity:
         Anchors may be individual words or lists of words to be averaged. This data can then be plotted. 
         """
         projections = []
-        for wv in self.wvs: 
-            vecs = np.array([wv.word_vec(word) for word in words])
-            projections.append(self.project(vecs, self.word_vec(wv, word1), self.word_vec(wv, word2)))
+        for model in self.models: 
+            vecs = np.array([model.wv.word_vec(word) for word in words])
+            projections.append(self.project(vecs, self.word_vec(model, word1), self.word_vec(model, word2)))
         return projections
 
     def plot_time_series_projections(self, word1, word2, words):
         proj = self.time_series_projections(word1, word2, words)
-        X = range(len(self.wvs))
+        X = range(len(self.models))
         for p in zip(*proj):
             plt.plot(X, p)
         plt.plot([0, len(self.wvs)-1], [0,0], color="k")
@@ -107,7 +107,7 @@ class DiscourseCommunity:
         Given a model and a word or a list of words, returns the word vector or mean of word vectors
         """
         if isinstance(word, str):
-            return model.word_vec(word)
+            return model.wv.word_vec(word)
         elif isinstance(word, list):
             return np.mean([self.word_vec(model, w) for w in word], axis=0)
         else:
