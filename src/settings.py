@@ -18,7 +18,7 @@ HN_MONTHLY_TEMPLATE = "hn_comments_{}_{}.csv"
 HN_MONTHLY_COUNTS = join(LOCAL_DATA, "hn_monthly_count.csv")
 HN_MONTHLY_COUNT_CHART = "../results/hn_monthly_comments.png"
 
-HN_MONTHLY_CORPUS_DIR = join(LOCAL_DATA, "hn_corpus_monthly")
+HN_MONTHLY_CORPUS_DIR = join(REMOTE_DATA, "hn_corpus_monthly")
 HN_MONTHLY_WEIGHTED_CORPUS_DIR = join(REMOTE_DATA, "hn_corpus_monthly_weighted")
 HN_MONTHLY_CORPUS_TEMPLATE = "hn_corpus_{}_{}.txt"
 
@@ -44,7 +44,7 @@ USER_DEGREE_DIST_CHART = "../results/hn_user_degree_distribution.png"
 USER_DEGREE_DIST_CHART_WITH_EST = "../results/hn_user_degree_distribution_with_est.png"
 USER_DEGREE_CF_HIST_CHART = "../results/hn_user_clustering_coefficients.png"
 
-GOOGLE_NEWS_EMBEDDING_FILE = join(LOCAL_DATA, "GoogleNews-vectors-negative300.bin")
+GOOGLE_NEWS_EMBEDDING_FILE = join(REMOTE_DATA, "GoogleNews-vectors-negative300.bin")
 HN_MONTHLY_MODELS_DIR = join(REMOTE_DATA, "hn_embeddings_monthly/")
 HN_MONTHLY_WEIGHTED_MODELS_DIR = join(REMOTE_DATA, "hn_embeddings_monthly_weighted/")
 HN_MONTHLY_MODEL_TEMPLATE = "hn_embed_{}_{}"
@@ -59,20 +59,39 @@ HN_SCORED_COMMENTS = join(REMOTE_DATA, 'scored_comments.csv')
 HN_SCORED_COMMENTS_INITIAL_MODEL = join(REMOTE_DATA, 'scored_comments_initial_model.csv')
 HN_SCORED_COMMENTS_FULL = join(REMOTE_DATA, 'scored_comments_bloated.csv')
 HN_SCORED_COMMENT_BOW_WV = join(REMOTE_DATA, 'scored_comment_bow_wvs.npy')
+HN_SCORED_COMMENT_BOW_WV_BASELINE = join(REMOTE_DATA, 'scored_comment_bow_wvs_baseline.npy')
 
 # All users who have at least 20 comments (of at least 30 words)
 HN_CLASSIFIED_USERS = join(REMOTE_DATA, 'classified_users.csv') 
 
+# These are the original splits (60, 20, 20) of users.
 TRAIN_EXAMPLES = join(LOCAL_DATA, 'train_20_50_200.csv')
 DEV_EXAMPLES = join(LOCAL_DATA, 'dev_20_50_200.csv')
 TEST_EXAMPLES = join(LOCAL_DATA, 'test_20_50_200.csv')
 
+# These features are the binned similarity scores, from when we were only using the 
+# embedding to compute log likelihood of speech.
 WV_INITIAL_MODEL_FEATURES = join(REMOTE_DATA, 'features_wv_initial_model.csv')
 
 LIFE_JACCARD_CHART = join(RESULTS, "life_stage_jaccard.png")
 LIFE_DIST_BIGRAM_CHART = join(RESULTS, "life_stage_distance_bigram.png")
 LIFE_DIST_WV_CHART = join(RESULTS, "life_stage_distance_wv.png")
 
+# These are, for each user, their first 20 comments, where each comment is
+# looked up in its monthly embedding (300 dimensions) and then the word vectors
+# for the comment are averaged (bag of words strategy).
+# The first 10 features are the standard frequency and activity bins; 
+# then the next 20 * 300 = 6000 are these word vectors.
+TRAIN_NN_FEATURES = join(REMOTE_DATA, 'train_nn_features.npz')
+DEV_NN_FEATURES = join(REMOTE_DATA, 'dev_nn_features.npz')
+TEST_NN_FEATURES = join(REMOTE_DATA, 'test_nn_features.npz')
+
+# Same as above, except always using the Google News (initial) embedding.
+BASELINE_TRAIN_NN_FEATURES = join(REMOTE_DATA, 'train_nn_features_baseline.npz')
+BASELINE_DEV_NN_FEATURES = join(REMOTE_DATA, 'dev_nn_features_baseline.npz')
+BASELINE_TEST_NN_FEATURES = join(REMOTE_DATA, 'test_nn_features_baseline.npz')
+
+DNN_MODEL_DIR = join(REMOTE_DATA, 'tensorflow', 'DNN')
 
 def get_month_filepath(year, month):
     "Returns the path to a CSV of a month's comments"

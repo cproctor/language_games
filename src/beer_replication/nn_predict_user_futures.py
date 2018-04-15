@@ -40,7 +40,7 @@ def evaluate_tf_preds(preds, labels, dataset, desc):
 # Create numpy arrays of features and labels. Features include 10 activity features 
 # and 20 * 300 = 6000 BoW representations of the first 20 comments.
 
-if True:
+if False:
     activity_features = feature_class('freq') + feature_class('month')
     comments = pd.read_csv(HN_SCORED_COMMENTS_FULL, usecols=['username'])
     comment_bow_wvs = np.load(HN_SCORED_COMMENT_BOW_WV, 'r')
@@ -59,7 +59,7 @@ if True:
 
 # Now doing the same thing, but using the pre-looked-up embeddings from the initial embedding
 # Rather than from the monthly embeddings
-if True:
+if False:
     b_activity_features = feature_class('freq') + feature_class('month')
     b_comments = pd.read_csv(HN_SCORED_COMMENTS_FULL, usecols=['username'])
     b_comment_bow_wvs = np.load(HN_SCORED_COMMENT_BOW_WV_BASELINE, 'r')
@@ -125,49 +125,86 @@ if False:
 
 
 # =======================================================================================
-# Create the neural net. This is cheap, so we'll always do it. Then we can choose whether
-# we want one or both datasets
-
-all_features = tf.feature_column.numeric_column('all_features', shape=(6010, ), dtype=tf.float64)
-estimator = tf.estimator.DNNClassifier(
-    model_dir=DNN_MODEL_DIR,
-    feature_columns=[all_features],
-    hidden_units=[256],
-    dropout = 0.1,
-    optimizer=tf.train.ProximalAdagradOptimizer(
-        learning_rate=0.1,
-        l1_regularization_strength=0.01
-    )
-)
-
-if False:
-    # Built input functions
+# Try this with a neural net.
+if True:
+    # Built input functions.
+    # Let's be more responsible and do our experiments on slices of the training data.
+    # We'll do simple cross-validation
     with np.load(TRAIN_NN_FEATURES) as train:
         train_features = train['features']
         train_labels = train['labels'].reshape((-1,1))
     with np.load(DEV_NN_FEATURES) as dev:
         dev_features = dev['features']
         dev_labels = dev['labels'].reshape((-1,1))
-    train_input_fn = tf.estimator.inputs.numpy_input_fn(
-            {'all_features': train_features}, train_labels, batch_size=96, shuffle=True, num_epochs=20)
-    dev_input_fn = tf.estimator.inputs.numpy_input_fn(
-            {'all_features': dev_features}, dev_labels, batch_size=96, shuffle=True)
+    with np.load(BASELINE_TRAIN_NN_FEATURES) as train:
+        b_train_features = train['features']
+        b_train_labels = train['labels']
+    with np.load(BASELINE_DEV_NN_FEATURES) as dev:
+        b_dev_features = dev['features']
+        b_dev_labels = dev['labels']
 
-    # Let's be more responsible and do our experiments on slices of the training data.
-    # We'll do simple cross-validation
     CV_RATIO = 0.2
     cv_train_size = round(train_features.shape[0] * (1-CV_RATIO))
     cv_train_features, cv_test_features = train_features[:cv_train_size], train_features[cv_train_size:]
+    cv_b_train_features, cv_b_test_features = b_train_features[:cv_train_size], b_train_features[cv_train_size:]
     cv_train_labels, cv_test_labels = train_labels[:cv_train_size], train_labels[cv_train_size:]
-    cv_train_input_fn = tf.estimator.inputs.numpy_input_fn(
-            {'all_features': cv_train_features}, cv_train_labels, batch_size=96, shuffle=True, num_epochs=20)
-    cv_test_input_fn = tf.estimator.inputs.numpy_input_fn(
-            {'all_features': cv_test_features}, cv_test_labels, batch_size=96, shuffle=True, num_epochs=20)
-    
-    estimator.train(input_fn=cv_train_input_fn)
-    preds = list(estimator.predict(input_fn=cv_test_input_fn))
-    model_decs =  "H 256; D0.1; LR 0.1; L1 0.01"
-    results.append(evaluate_tf_preds(preds, cv_test_labels, "CV", model_desc))
+
+    # Input functions
+    BATCH_SIZE = 96
+    NUM_EPOCHS = 20
+
+    def create_input_fn(activity, monthly, initial, labels, train=True):
+        return tf.estimator.inputs.numpy_input_fn(
+            {'activity': activity, 'monthly_wv': monthly, 'initial_wv': initial}, 
+            labels, 
+            batch_size=BATCH_SIZE, 
+            shuffle=True, 
+            num_epochs=NUM_EPOCHS if train else 1
+        )
+    cv_train_input_fn = create_input_fn(cv_train_features[:, :10], cv_train_features[:, 10:], 
+            cv_b_train_features[:, 10:], cv_train_labels)
+    cv_test_input_fn = create_input_fn(cv_test_features[:, :10], cv_test_features[:, 10:],
+            cv_b_test_features[:, 10:], cv_test_labels, train=False)
+    train_input_fn = create_input_fn(train_features[:, :10], train_features[:, 10:], 
+            b_train_features[:, 10:], train_labels)
+    dev_input_fn = create_input_fn(dev_features[:, :10], dev_features[:, 10:], 
+            b_dev_features[:, 10:], dev_labels, train=False)
+
+    # Features
+    activity_features = tf.feature_column.numeric_column('activity', 
+            shape=(10, ), dtype=tf.float64)
+    monthly_wv_features = tf.feature_column.numeric_column('monthly_wv', 
+            shape=(6000, ), dtype=tf.float64)
+    initial_wv_features = tf.feature_column.numeric_column('initial_wv', 
+            shape=(6000, ), dtype=tf.float64)
+
+    def evaluate_model(train_fn, predict_fn, labels, hyperparams, dataset, description, report_train=False):
+        estimator = tf.estimator.DNNClassifier(model_dir=DNN_MODEL_DIR, **hyperparams)
+        estimator.train(input_fn=train_fn)
+        preds = estimator.predict(input_fn=predict_fn)
+        results.append(evaluate_tf_preds(preds, cv_test_labels, dataset, description))
+
+    def grid_search(base, param, values):
+        grid = []
+        for value in values:
+            case = dict(base)
+            case[param] = value
+            grid.append(case)
+        return grid
+
+    # Models
+    cv_3layer_monthly = {
+        'feature_columns': [activity_features, monthly_wv_features],
+        'hidden_units': [512, 256, 128],
+        'dropout': 0.1,
+        'optimizer': tf.train.ProximalAdagradOptimizer(
+            learning_rate=0.1,
+            l1_regularization_strength=0.01
+        )
+    }
+            
+    # Run trials on models
+    evaluate_model(cv_train_input_fn, cv_test_input_fn, cv_test_labels, cv_3layer_monthly, "CV", "Monthly")
 
 # So we've got good results from the nn. How much of that is coming from the monthly embeddings? 
 # Let's try with the basic embeddings to find out.
