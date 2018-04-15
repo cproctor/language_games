@@ -8,9 +8,10 @@
 # author cp
 
 import numpy as np
+import pandas as pd
 import matplotlib.pyplot as plt
 from random import sample
-from helpers import *
+#from helpers import *
 from os.path import join
 from os import listdir
 import arrow
@@ -29,6 +30,9 @@ def get_month_filepath(year, month):
 
 def get_month_corpus_filepath(year, month):
     return join(HN_MONTHLY_CORPUS_DIR, HN_MONTHLY_CORPUS_TEMPLATE.format(year, month))
+
+STANFORD = ["#53284f", "#0098db", "#eaab00", "#009b76", "#007c92", "#e98300"]
+S = STANFORD
 
 # Table 1 (p. 3)
 if False: # Extremely slow. ~ 2 hours.
@@ -89,10 +93,10 @@ if False: # Continued
         stay.append(len(users[(users.enter < begin.datetime) & (users.exit > end.datetime)]))
     pd.DataFrame({'year': year, 'bounce': bounce, 'enter': enter, 'exit': exit, 'stay': stay}).to_csv(USER_BASE)
     plt.clf()
-    plt.bar(year[:-1], enter[:-1], 0.5, color='green')
-    plt.bar(year[:-1], bounce[:-1], 0.5, bottom=enter[:-1], color='yellow')
-    plt.bar(year[:-1], exit[:-1], 0.5, bottom=np.sum([enter, bounce], axis=0)[:-1], color='red')
-    plt.bar(year[:-1], stay[:-1], 0.5, bottom=np.sum([enter, bounce, exit], axis=0)[:-1], color='blue')
+    plt.bar(year[:-1], enter[:-1], 0.5, color=S[0])
+    plt.bar(year[:-1], bounce[:-1], 0.5, bottom=enter[:-1], color=S[1])
+    plt.bar(year[:-1], exit[:-1], 0.5, bottom=np.sum([enter, bounce], axis=0)[:-1], color=S[2])
+    plt.bar(year[:-1], stay[:-1], 0.5, bottom=np.sum([enter, bounce, exit], axis=0)[:-1], color=S[3])
     plt.xlabel("Year")
     plt.ylabel("Number of users")
     plt.title("Change in Hacker News User Base")
@@ -197,7 +201,7 @@ if False:
     test.to_csv(TEST_EXAMPLES)
 
 # Now that I have added in the inital comment scores, I want to bin them up to use as examples
-if True: 
+if False: 
     linguisticFE = InitialModelFeatureExtractor()
     examples = []
     
@@ -231,6 +235,25 @@ if False:
                 comment_wvs[ix] = wv
         del wv_model
     np.save(HN_SCORED_COMMENT_BOW_WV, comment_wvs)
+
+# Those word vectors worked great. For comparison, now I want to see what happens if I just use the original
+# Word2Vec embedding instead of using each month's. This could be done in a more straightforward way, 
+# But I already had the code for looking up via each monthly model and wanted to reduce the chance of errors.
+if True:
+    print("PRE-LOOKUP OF COMMENTS FROM BASELINE EMBEDDING")
+    comments = pd.read_csv(HN_SCORED_COMMENTS_FULL, usecols=['comment_text', 'created_at'],
+            parse_dates=['created_at'])
+    comment_wvs = np.zeros((len(comments), 300))
+    groups = comments.groupby([comments.created_at.dt.year, comments.created_at.dt.month], sort=False)
+    wv_model = KeyedVectors.load(INITIAL_MODEL).wv
+    for (year, month), month_comments in groups:
+        print("{}-{}".format(year, month))
+        for ix, c in month_comments.iterrows():
+            cl = [w for w in str(c.comment_text).split() if w in wv_model.vocab]
+            if any(cl):
+                wv = wv_model.wv[cl].mean(axis=0)  
+                comment_wvs[ix] = wv
+    np.save(HN_SCORED_COMMENT_BOW_WV_BASELINE, comment_wvs) 
         
 # JUNK
 if False:
