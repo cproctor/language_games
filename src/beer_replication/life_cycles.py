@@ -6,6 +6,10 @@ import numpy as np
 from sklearn.metrics import jaccard_similarity_score
 from collections import Counter
 import matplotlib.pyplot as plt
+import matplotlib as mpl
+
+mpl.rcParams['lines.linewidth'] = 3.0
+
 
 SAMPLES = 10000
 
@@ -41,9 +45,11 @@ jaccard_scores = np.array(jaccard_scores)
 jaccard_averages = jaccard_scores.mean(axis=0)
 jaccard_std = jaccard_scores.std(axis=0) / np.sqrt(SAMPLES)
 
+S = ["#53284f", "#0098db", "#eaab00", "#009b76", "#007c92", "#e98300"]
+
 lifespan = np.linspace(0, 100, 11)
-plt.errorbar(lifespan, jaccard_averages, yerr=jaccard_std, color="red")
-plt.plot(lifespan, jaccard_averages, color="blue")
+plt.errorbar(lifespan, jaccard_averages, yerr=jaccard_std, color="#eaab00")
+plt.plot(lifespan, jaccard_averages, color="#0098db")
 plt.xlim([0, 100])
 plt.title("Language flexibility")
 plt.xlabel("life stage (percentage)")
@@ -55,8 +61,8 @@ bigram_dist = np.array(bigram_dist)
 bigram_avg = bigram_dist.mean(axis=0)
 bigram_std = bigram_dist.std(axis=0) / np.sqrt(SAMPLES)
 
-plt.errorbar(lifespan, bigram_avg, yerr=bigram_std, color="red")
-plt.plot(lifespan, bigram_avg, color="blue")
+plt.errorbar(lifespan, bigram_avg, yerr=bigram_std, color="#eaab00")
+plt.plot(lifespan, bigram_avg, color="#0098db")
 plt.xlim([0, 100])
 plt.title("Distance from community: Bigram Cross-entropy")
 plt.xlabel("life stage (percentage)")
@@ -68,8 +74,8 @@ wv_dist = np.array(wv_dist)
 wv_avg = wv_dist.mean(axis=0)
 wv_std = wv_dist.std(axis=0) / np.sqrt(SAMPLES)
 
-plt.errorbar(lifespan, wv_avg, yerr=wv_std, color="red")
-plt.plot(lifespan, wv_avg, color="blue")
+plt.errorbar(lifespan, wv_avg, yerr=wv_std, color="#eaab00")
+plt.plot(lifespan, wv_avg, color="#0098db")
 plt.xlim([0, 100])
 plt.title("Distance from community: Word vector log lik.")
 plt.xlabel("life stage (percentage)")
