@@ -56,7 +56,7 @@ if False: # Build langauge models
         subprocess.check_call(buildBinaryCmd, shell=True)
 
 # NOW DO IT AGAIN, BUT WEIGHTED
-if True: # Generate monthly tokens
+if False: # Generate monthly tokens
     months = arrow.Arrow.span_range('month', arrow.get(START_MONTH), arrow.get(END_MONTH))
     for begin, end in months:
         print(begin.format("YYYY-MM"))
