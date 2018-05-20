@@ -23,7 +23,9 @@ def create_initial_model():
     model so we don't have to do it again. 
     """
     sentences = PathLineSentences(HN_MONTHLY_CORPUS_DIR)
-    model = Word2Vec(size=300, sg=1, hs=1, negative=0)
+    model = Word2Vec(size=300, sg=1, hs=1, negative=0) # Hey! Is no negative sampling a problem? 
+                                                       # Hopefully this just means a bad non-optimization
+                                                       # rather than invalid results. Check the gensim code.
     print("building vocabulary...")
     model.build_vocab(sentences)
     print("intersecting pretrained word vectors...")
@@ -36,7 +38,7 @@ def train_monthly_models(weighted=False, epochs=10):
     """
     Load the initial model (vocabulary with Google-News-trained vectors), and then iterate
     over each month's corpus, training and saving the model. This takes ~3 hours, and requires
-    about 50gm to write the models :/
+    about 50gb to write the models :/
     """
     model = Word2Vec.load(INITIAL_MODEL)
     months = arrow.Arrow.span_range('month', arrow.get(START_MONTH), arrow.get(END_MONTH))
