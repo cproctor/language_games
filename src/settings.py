@@ -93,6 +93,23 @@ BASELINE_TEST_NN_FEATURES = join(REMOTE_DATA, 'test_nn_features_baseline.npz')
 
 DNN_MODEL_DIR = join(REMOTE_DATA, 'tensorflow', 'DNN')
 
+# LOCAL MEANING ANALYSIS
+ASSOCIATION_PROJECTIONS = join(REMOTE_DATA, 'local_analysis', 'association_projections.csv')
+WEAT_RESULTS = join(RESULTS, 'weat')
+
+# CO-OCCURRENCE MATRICS
+HN_MONTHLY_COOCCURRENCE_DIR = join(REMOTE_DATA, 'hn_monthly_cooccurrence')
+HN_MONTHLY_COOCCURRENCE_TEMPLATE = "hn_monthly_cooccurrence_{}_{}.npy"
+
+# GlOve
+GLOVE_DIR = join(REMOTE_DATA, 'glove')
+ORIGINAL_GLOVE_EMBEDDING = join(GLOVE_DIR, 'glove.42B.300d.txt')
+TRUNCATED_GLOVE_EMBEDDING = join(GLOVE_DIR, 'glove.20k.300d.txt')
+GLOVE_VOCAB = join(GLOVE_DIR, 'vocab.txt')
+HN_MONTHLY_GLOVE_EMBEDDING_DIR = join(GLOVE_DIR, 'monthly')
+HN_MONTHLY_GLOVE_EMBEDDING_TEMPLATE = 'hn_monthly_glove_embedding_{}_{}.npy'
+
+# HELPERS
 def get_month_filepath(year, month):
     "Returns the path to a CSV of a month's comments"
     return join(HN_MONTHLY_DIR, HN_MONTHLY_TEMPLATE.format(year, month))
@@ -125,6 +142,12 @@ def get_month_word_vectors_filepath(year, month, weighted=False):
         return join(HN_MONTHLY_WEIGHTED_WVS_DIR, HN_MONTHLY_WV_TEMPLATE.format(year, month))
     else:
         return join(HN_MONTHLY_WVS_DIR, HN_MONTHLY_WV_TEMPLATE.format(year, month))
+
+def get_month_cooccurrence_matrix_filepath(year, month):
+    return join(HN_MONTHLY_COOCCURRENCE_DIR, HN_MONTHLY_COOCCURRENCE_TEMPLATE.format(year, month))
+
+def get_month_glove_embedding_filepath(year, month):
+    return join(HN_MONTHLY_GLOVE_EMBEDDING_DIR, HN_MONTHLY_GLOVE_EMBEDDING_TEMPLATE.format(year, month))
 
 
 
