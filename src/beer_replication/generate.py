@@ -255,21 +255,3 @@ if True:
                 comment_wvs[ix] = wv
     np.save(HN_SCORED_COMMENT_BOW_WV_BASELINE, comment_wvs) 
         
-# JUNK
-if False:
-    feature_collection = []
-    users = pd.read_csv(HN_CLASSIFIED_USERS, usecols=['id', 'username', 'label'])
-    comments = pd.read_csv(HN_SCORED_COMMENTS_FULL, parse_dates=['created_at'])
-    grouped_comments = comments.groupby('username')
-    for username, comments in tqdm(grouped_comments, total=17895):
-        features = {'username': username}
-        bins = comments[:20].groupby(np.arange(20) // 5)
-        #for b, bin_comments in bins:
-        
-    
-
-
-
-
-
-

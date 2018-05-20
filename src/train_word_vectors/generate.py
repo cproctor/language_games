@@ -62,15 +62,6 @@ def save_readonly_word_vectors():
         model.wv.save(get_month_word_vectors_filepath(begin.year, begin.month))
         del model
 
-def plot_time_series():
-    years = arrow.Arrow.span_range('year', arrow.get("2008-01"), arrow.get("2017-01"))
-    models = ['initial-wv'] + [get_month_word_vectors_filepath(y.year, y.month) for y, _ in years]
-    labels = ["Google News"] + [y.format('YYYY-MM') for y, _ in years]
-    dc = DiscourseCommunity(models, labels)
-    words = ['smart', 'funny', 'bold', 'thoughtful', 'caring']
-    dc.plot_time_series_projections('man', 'woman', words)
-    return dc
-    
 #model = create_initial_model()
 train_monthly_models(weighted=True, epochs=5)
 #save_readonly_word_vectors()
