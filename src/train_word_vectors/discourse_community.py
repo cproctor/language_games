@@ -26,7 +26,7 @@ class DiscourseCommunity:
             model.wv.init_sims()
             self.models.append(model)
 
-    def greatest_shift(self, topn=10, restrict_vocab=None):
+    def greatest_shift(self, topn=10, restrict_vocab=None, first_model=0, last_model=-1):
         """
         Using the first and last models, computes the words whose vector positions have shifted the most
         by taking the cosine similarity of one embedding with the other.
@@ -36,8 +36,8 @@ class DiscourseCommunity:
             makes sense if the vocabulary is sorted by frequency. 
         """
         if len(self.models) < 2: raise ValueError("Cannot compute word shifts with fewer than 2 embeddings")
-        begin = self.models[0].wv.syn0[:restrict_vocab] if restrict_vocab else self.models[0].wv.syn0
-        end = self.models[-1].wv.syn0[:restrict_vocab] if restrict_vocab else self.models[-1].wv.syn0
+        begin = self.models[first_model].wv.syn0[:restrict_vocab] if restrict_vocab else self.models[first_model].wv.syn0
+        end = self.models[last_model].wv.syn0[:restrict_vocab] if restrict_vocab else self.models[last_model].wv.syn0
         shifts = np.sqrt(np.einsum('ij,ij->i', (begin-end), (begin-end)))
 
         if not topn: return shifts # Just a vector of distances
@@ -78,15 +78,16 @@ class DiscourseCommunity:
         X = range(len(self.models))
         for p in zip(*proj):
             plt.plot(X, p)
-        plt.plot([0, len(self.wvs)-1], [0,0], color="k")
-        plt.plot([0, len(self.wvs)-1], [1,1], color="k")
+        plt.plot([0, len(self.models)-1], [0,0], color="k")
+        plt.plot([0, len(self.models)-1], [1,1], color="k")
         textMargin = 0.2
-        plt.text(len(self.wvs)-1, 0, word1, ha='right', va="bottom")
-        plt.text(len(self.wvs)-1, 1, word2, ha='right', va="bottom")
+        plt.text(len(self.models)-1.1, 0.01, self.word_label(word1), ha='right', va="bottom")
+        plt.text(len(self.models)-1.1, 1.01, self.word_label(word2), ha='right', va="bottom")
         plt.xticks(X, self.labels or X, rotation='vertical')
-        plt.legend(words)
+        plt.legend(words, loc='upper left')
         plt.xlabel("Language model")
         plt.ylabel("Relative closeness to anchor words")
+        plt.ylim([-0.1, 1.1])
         if isinstance(word1, str) and isinstance(word2, str):
             plt.title("Shift in word meanings projected onto {}-{} axis".format(word1, word2))
         else:
@@ -117,7 +118,7 @@ class DiscourseCommunity:
         if isinstance(word, str): 
             return word
         elif isinstance(word, list):
-            return "({})".format('-'.join(word))
+            return ', '.join(word)
         else:
             raise ValueError("Expecting a string or list of strings")
 
