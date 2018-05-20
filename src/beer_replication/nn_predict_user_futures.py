@@ -17,6 +17,7 @@ import tensorflow as tf
 from sklearn.linear_model import LogisticRegression
 from sklearn.metrics import precision_recall_fscore_support
 from tabulate import tabulate
+from pathlib import Path
 from settings import *
 
 results = []
@@ -178,11 +179,14 @@ if True:
     initial_wv_features = tf.feature_column.numeric_column('initial_wv', 
             shape=(6000, ), dtype=tf.float64)
 
-    def evaluate_model(train_fn, predict_fn, labels, hyperparams, dataset, description, report_train=False):
-        estimator = tf.estimator.DNNClassifier(model_dir=DNN_MODEL_DIR, **hyperparams)
-        estimator.train(input_fn=train_fn)
+    def evaluate_model(train_fn, predict_fn, labels, hyperparams, dataset, description, train=True):
+        estimator = tf.estimator.DNNClassifier(model_dir=Path(DNN_MODEL_DIR) / Path(description), **hyperparams)
+        if train:
+            estimator.train(input_fn=train_fn)
+        estimator.evaluate(train_fn, steps=10000, name=description + "TRAIN")
+        estimator.evaluate(predict_fn, steps=10000, name=description + "TEST")
         preds = estimator.predict(input_fn=predict_fn)
-        results.append(evaluate_tf_preds(preds, cv_test_labels, dataset, description))
+        results.append(evaluate_tf_preds(preds, labels, dataset, description))
 
     def grid_search(base, param, values):
         grid = []
@@ -194,17 +198,44 @@ if True:
 
     # Models
     cv_3layer_monthly = {
-        'feature_columns': [activity_features, monthly_wv_features],
-        'hidden_units': [512, 256, 128],
-        'dropout': 0.1,
+        'feature_columns': [activity_features, monthly_wv_features, initial_wv_features],
+        'hidden_units': [1024, 512, 256],
+        'dropout': 0.3,
+        'optimizer': tf.train.ProximalAdagradOptimizer(
+            learning_rate=0.1,
+            l1_regularization_strength=0.01
+        )
+    }
+
+    cv_3layer_initial = {
+        'feature_columns': [activity_features, initial_wv_features],
+        'hidden_units': [1024, 512, 256],
+        'dropout': 0.3,
         'optimizer': tf.train.ProximalAdagradOptimizer(
             learning_rate=0.1,
             l1_regularization_strength=0.01
         )
     }
             
-    # Run trials on models
-    evaluate_model(cv_train_input_fn, cv_test_input_fn, cv_test_labels, cv_3layer_monthly, "CV", "Monthly")
+    # TEST NUMBER OF LAYERS
+    if False:
+        depths = [[1024, 512, 256], [512, 256], [256]]
+        names = ["Monthly {} layer".format(i) for i in [3,2,1]]
+        for name, model in zip(names, grid_search(cv_3layer_monthly, 'hidden_units', depths)):
+            evaluate_model(cv_train_input_fn, cv_test_input_fn, cv_test_labels, model, "CV", name, train=False)
+    
+    # TEST AMOUNT OF DROPOUT
+    if False:
+        drops = np.linspace(0.1, 0.6, 6)
+        names = ["2 Monthly drop {}".format(i) for i in drops]
+        for name, model in zip(names, grid_search(cv_3layer_monthly, 'dropout', drops)):
+            evaluate_model(cv_train_input_fn, cv_test_input_fn, cv_test_labels, model, "CV", name, train=True)
+
+    # TEST ADDITION OF MONTHLY
+    if True:
+        evaluate_model(train_input_fn, dev_input_fn, dev_labels, cv_3layer_monthly, "DEV", "Initial")
+        evaluate_model(train_input_fn, dev_input_fn, dev_labels, cv_3layer_monthly, "DEV", "Initlal+Monthly")
+
 
 # So we've got good results from the nn. How much of that is coming from the monthly embeddings? 
 # Let's try with the basic embeddings to find out.
