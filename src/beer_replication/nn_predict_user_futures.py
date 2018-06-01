@@ -20,6 +20,8 @@ from tabulate import tabulate
 from pathlib import Path
 from settings import *
 
+TRAIN_MODELS = True # As opposed to using pretrained models
+
 results = []
 
 def feature_class(name, use_max=True, use_min=False):
@@ -183,8 +185,8 @@ if True:
         estimator = tf.estimator.DNNClassifier(model_dir=Path(DNN_MODEL_DIR) / Path(description), **hyperparams)
         if train:
             estimator.train(input_fn=train_fn)
-        estimator.evaluate(train_fn, steps=10000, name=description + "TRAIN")
-        estimator.evaluate(predict_fn, steps=10000, name=description + "TEST")
+        estimator.evaluate(train_fn, steps=10000, name=description + " TRAIN")
+        estimator.evaluate(predict_fn, steps=10000, name=description + " TEST")
         preds = estimator.predict(input_fn=predict_fn)
         results.append(evaluate_tf_preds(preds, labels, dataset, description))
 
@@ -218,24 +220,25 @@ if True:
     }
             
     # TEST NUMBER OF LAYERS
-    if False:
+    if True:
         depths = [[1024, 512, 256], [512, 256], [256]]
         names = ["Monthly {} layer".format(i) for i in [3,2,1]]
         for name, model in zip(names, grid_search(cv_3layer_monthly, 'hidden_units', depths)):
-            evaluate_model(cv_train_input_fn, cv_test_input_fn, cv_test_labels, model, "CV", name, train=False)
+            evaluate_model(cv_train_input_fn, cv_test_input_fn, cv_test_labels, model, "CV", name, 
+                    train=TRAIN_MODELS)
     
     # TEST AMOUNT OF DROPOUT
-    if False:
+    if True:
         drops = np.linspace(0.1, 0.6, 6)
-        names = ["2 Monthly drop {}".format(i) for i in drops]
+        names = ["2 Monthly drop {:.1f}".format(i) for i in drops]
         for name, model in zip(names, grid_search(cv_3layer_monthly, 'dropout', drops)):
-            evaluate_model(cv_train_input_fn, cv_test_input_fn, cv_test_labels, model, "CV", name, train=True)
+            evaluate_model(cv_train_input_fn, cv_test_input_fn, cv_test_labels, model, "CV", name, 
+                    train=TRAIN_MODELS)
 
     # TEST ADDITION OF MONTHLY
-    if True:
+    if False:
         evaluate_model(train_input_fn, dev_input_fn, dev_labels, cv_3layer_monthly, "DEV", "Initial")
         evaluate_model(train_input_fn, dev_input_fn, dev_labels, cv_3layer_monthly, "DEV", "Initlal+Monthly")
-
 
 # So we've got good results from the nn. How much of that is coming from the monthly embeddings? 
 # Let's try with the basic embeddings to find out.
