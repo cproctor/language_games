@@ -97,6 +97,13 @@ DNN_MODEL_DIR = join(REMOTE_DATA, 'tensorflow', 'DNN')
 ASSOCIATION_PROJECTIONS = join(REMOTE_DATA, 'local_analysis', 'association_projections.csv')
 WEAT_RESULTS = join(RESULTS, 'weat')
 
+# Weat-based experiments
+TECH_COMPANY_WEAT_PLEASANT_UNPLEASANT_PROJECTIONS = join(REMOTE_DATA, 'local_analysis', 
+        'tech_weat_pleasant_unpleasant_projections.csv')
+WEAT_EXPERIMENT_RESULTS = join(RESULTS, 'weat_experiments')
+TECH_COMPANY_WEAT_PLEASANT_UNPLEASANT_PLOT = join(WEAT_EXPERIMENT_RESULTS, "tech_company_weat_pleasant_unpleasant.png")
+
+
 def get_month_filepath(year, month):
     "Returns the path to a CSV of a month's comments"
     return join(HN_MONTHLY_DIR, HN_MONTHLY_TEMPLATE.format(year, month))
