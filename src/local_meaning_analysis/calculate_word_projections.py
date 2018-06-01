@@ -1,4 +1,4 @@
-from word_projections import request_word_projections, plot_iat
+from word_projections import request_word_projections, plot_iat, plot_words_on_relational_axis
 import weat
 import pandas as pd
 import matplotlib.pyplot as plt
@@ -29,7 +29,7 @@ if False:
     result.to_csv(ASSOCIATION_PROJECTIONS)
 
 # Generate the time series and the charts we need to show changes in implicit association
-if True:
+if False:
     projections = p = pd.read_csv(ASSOCIATION_PROJECTIONS)
 
     clean = lambda name: ''.join(i for i in name if not i.isdigit()).replace('_', ' ')
@@ -41,3 +41,36 @@ if True:
                 wordLabels=list(map(clean, words)))
         plt.savefig(str(Path(WEAT_RESULTS) / Path(name + '.png')))
 
+def project_tech_companies_pleasant_unpleasant(generate_projections=True):
+    tech_companies = [
+        "tesla", 
+        "apple", 
+        "google",
+        "theranos",
+        "facebook"
+    ]
+    if generate_projections:
+        requests = []
+        date_span = arrow.Arrow.span_range('month', arrow.get(START_MONTH), arrow.get(END_MONTH))
+        for tc in tech_companies:
+            for begin, end in date_span:
+                requests.append({
+                    "word": tc,
+                    "year": begin.year,
+                    "month": begin.month,
+                    "cluster0": 'pleasant1',
+                    "cluster1": 'unpleasant1'
+                })
+        r = pd.DataFrame(requests)
+        result = request_word_projections(r, weat.clusters)
+        result.to_csv(TECH_COMPANY_WEAT_PLEASANT_UNPLEASANT_PROJECTIONS)
+
+    projections = p = pd.read_csv(TECH_COMPANY_WEAT_PLEASANT_UNPLEASANT_PROJECTIONS)
+    plot_words_on_relational_axis(projections, ['tesla', 'theranos'], 
+            ['unpleasant1', 'pleasant1'],
+            title="Hacker News discussion of tech companies over time",
+            endpoint_labels=['unpleasant', 'pleasant'], window=8)
+    plt.savefig(TECH_COMPANY_WEAT_PLEASANT_UNPLEASANT_PLOT)
+
+project_tech_companies_pleasant_unpleasant(generate_projections=False)
+        
