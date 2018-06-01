@@ -1,4 +1,4 @@
-from word_projections import request_word_projections, plot_iat, plot_words_on_relational_axis
+from word_projections import request_word_projections, plot_words_on_relational_axis
 import weat
 import pandas as pd
 import matplotlib.pyplot as plt
@@ -29,16 +29,16 @@ if False:
     result.to_csv(ASSOCIATION_PROJECTIONS)
 
 # Generate the time series and the charts we need to show changes in implicit association
-if False:
+if True:
     projections = p = pd.read_csv(ASSOCIATION_PROJECTIONS)
 
     clean = lambda name: ''.join(i for i in name if not i.isdigit()).replace('_', ' ')
 
     for name, (endpoints, words) in weat.experiments.items():
-        plot_iat(p, weat.clusters, words, endpoints, std=True, 
-                title="HN word meanings ({})".format(name), 
-                endpointLabels=list(map(clean, endpoints)),
-                wordLabels=list(map(clean, words)))
+        plot_words_on_relational_axis(p, [weat.clusters[words[0]], weat.clusters[words[1]]],
+                endpoints, title="HN word meanings ({})".format(name), 
+                endpoint_labels=list(map(clean, endpoints)),
+                word_labels=list(map(clean, words)), std=True)
         plt.savefig(str(Path(WEAT_RESULTS) / Path(name + '.png')))
 
 def project_tech_companies_pleasant_unpleasant(generate_projections=True):
@@ -72,5 +72,5 @@ def project_tech_companies_pleasant_unpleasant(generate_projections=True):
             endpoint_labels=['unpleasant', 'pleasant'], window=8)
     plt.savefig(TECH_COMPANY_WEAT_PLEASANT_UNPLEASANT_PLOT)
 
-project_tech_companies_pleasant_unpleasant(generate_projections=False)
+# project_tech_companies_pleasant_unpleasant(generate_projections=False)
         
