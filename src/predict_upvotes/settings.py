@@ -2,8 +2,6 @@
 # Mostly, these are file and directory locations.
 from os.path import join
 
-RANDOM_STATE = 12345
-
 LOCAL_DATA = "/Users/chris/Documents/4-PhD/Research/ActiveProjects/LanguageIdeology/language_games/data"
 RESULTS = "/Users/chris/Documents/4-PhD/Research/ActiveProjects/LanguageIdeology/language_games/results"
 REMOTE_DATA = "/Volumes/Chris Proctor Backup/language_games/data"
@@ -85,19 +83,19 @@ LIFE_DIST_WV_CHART = join(RESULTS, "life_stage_distance_wv.png")
 # for the comment are averaged (bag of words strategy).
 # The first 10 features are the standard frequency and activity bins; 
 # then the next 20 * 300 = 6000 are these word vectors.
-TRAIN_NN_FEATURES = join(REMOTE_DATA, 'train_nn_features.npy')
-DEV_NN_FEATURES = join(REMOTE_DATA, 'dev_nn_features.npy')
-TEST_NN_FEATURES = join(REMOTE_DATA, 'test_nn_features.npy')
+TRAIN_NN_FEATURES = join(REMOTE_DATA, 'train_nn_features.npz')
+DEV_NN_FEATURES = join(REMOTE_DATA, 'dev_nn_features.npz')
+TEST_NN_FEATURES = join(REMOTE_DATA, 'test_nn_features.npz')
+
+# Same as above, except using weighted monthly embeddings.
+WEIGHTED_TRAIN_NN_FEATURES = join(REMOTE_DATA, 'train_nn_features_weighted.npz')
+WEIGHTED_DEV_NN_FEATURES = join(REMOTE_DATA, 'dev_nn_features_weighted.npz')
+WEIGHTED_TEST_NN_FEATURES = join(REMOTE_DATA, 'test_nn_features_weighted.npz')
 
 # Same as above, except always using the Google News (initial) embedding.
-BASELINE_TRAIN_NN_FEATURES = join(REMOTE_DATA, 'train_nn_features_baseline.npy')
-BASELINE_DEV_NN_FEATURES = join(REMOTE_DATA, 'dev_nn_features_baseline.npy')
-BASELINE_TEST_NN_FEATURES = join(REMOTE_DATA, 'test_nn_features_baseline.npy')
-
-# Same as above, except always using the Google News (initial) embedding.
-GLOVE_TRAIN_NN_FEATURES = join(REMOTE_DATA, 'train_nn_features_glove.npy')
-GLOVE_DEV_NN_FEATURES = join(REMOTE_DATA, 'dev_nn_features_glove.npy')
-GLOVE_TEST_NN_FEATURES = join(REMOTE_DATA, 'test_nn_features_glove.npy')
+BASELINE_TRAIN_NN_FEATURES = join(REMOTE_DATA, 'train_nn_features_baseline.npz')
+BASELINE_DEV_NN_FEATURES = join(REMOTE_DATA, 'dev_nn_features_baseline.npz')
+BASELINE_TEST_NN_FEATURES = join(REMOTE_DATA, 'test_nn_features_baseline.npz')
 
 DNN_MODEL_DIR = join(REMOTE_DATA, 'tensorflow', 'DNN')
 
@@ -117,7 +115,6 @@ GLOVE_VOCAB = join(GLOVE_DIR, 'vocab.txt')
 HN_MONTHLY_GLOVE_EMBEDDING_DIR = join(GLOVE_DIR, 'monthly')
 HN_MONTHLY_GLOVE_EMBEDDING_TEMPLATE = 'hn_monthly_glove_embedding_{}_{}.npy'
 TENSORFLOW_LOG_DIR = join(GLOVE_DIR, 'tensorboard')
-HN_SCORED_COMMENT_GLOVE_BOW_WV = join(GLOVE_DIR, 'scored_comments_glove_bow_wv')
 
 # HELPERS
 def get_month_filepath(year, month):

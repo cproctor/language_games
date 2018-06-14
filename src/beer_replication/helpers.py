@@ -8,10 +8,11 @@ import sqlite3
 import os
 import nltk
 import snap
-from HTMLParser import HTMLParser
+from html.parser import HTMLParser
 import io
 import kenlm
 from palettable.colorbrewer.qualitative import Set1_6 as colors
+from sklearn.metrics import precision_recall_fscore_support
 
 def create_db_if_missing(csvfile, dbfile):
     "If the specified db does not exist, created it"
@@ -132,5 +133,33 @@ def classify_users(users, visible, departed, living):
     users.loc[users.comment_count > living, 'label'] = 1
     return users[users.label != -1]
 
+def add_min(data, feature_class_name):
+    "Given a feature name, adds a new feature indicating the index of the minimum value for that feature"
+    features = ['{}_{}'.format(feature_class_name, i) for i in ['0', '1', '2', '3']]
+    return data.assign(**{feature_class_name + '_min': np.argmin(data[features].values, axis=1)})
 
+def add_max(data, feature_class_name):
+    "Given a feature name, adds a new feature indicating the index of the maximum value for that feature"
+    features = ['{}_{}'.format(feature_class_name, i) for i in ['0', '1', '2', '3']]
+    return data.assign(**{feature_class_name + '_max': np.argmax(data[features].values, axis=1)})
 
+def feature_class(name, use_max=True, use_min=False):
+    "Generates a list of strings for four buckets of features, optionally including min and max"
+    suffixes = ['0', '1', '2', '3']
+    if use_min: suffixes += ['min']
+    if use_max: suffixes += ['max']
+    return ["{}_{}".format(name, suffix) for suffix in suffixes]
+
+def evaluate_model(description, model, trainX, testX, trainY, testY, with_train=False, 
+        trainLabel="Train", testLabel="Test"):
+    print("Training " + description + " on " + trainLabel + " -> " + testLabel)
+    model.fit(trainX, trainY)
+    results = []
+    if with_train:
+        yHat = model.predict(trainX)
+        p, r, f1, s = precision_recall_fscore_support(trainY, yHat)
+        results.append([trainLabel, trainLabel, description, p[1], r[1], f1[1], s[1]])
+    yHat = model.predict(testX)
+    p, r, f1, s = precision_recall_fscore_support(testY, yHat)
+    results.append([trainLabel, testLabel, description, p[1], r[1], f1[1], s[1]])
+    return results

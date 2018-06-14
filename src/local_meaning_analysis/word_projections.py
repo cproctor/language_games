@@ -112,7 +112,7 @@ def plot_words_on_relational_axis(p, words, endpoints, mean_colors=None, std_col
             ax.fill_between(range(len(cols.index)), col_mean-col_std, col_mean+col_std, color=std_color)
         else:
             cols.plot(color=mean_color, ax=ax, legend=False, linewidth=1.5)
-        col_mean.plot(color=mean_color, ax=ax, legend=False, linewidth=3)
+        col_mean.plot(color=mean_color, ax=ax, legend=False, linewidth=1.5)
         handles, labels = ax.get_legend_handles_labels()
         word_mean_handles.append(handles[-1])
 

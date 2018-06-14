@@ -20,9 +20,12 @@ if False: # Split comments into monthly files
     print(counts)
     counts.to_csv(HN_MONTHLY_COUNTS, index=False)
 
-if False: # Plot the monthly comments chart
+if True: # Plot the monthly comments chart
     counts = pd.read_csv(HN_MONTHLY_COUNTS, parse_dates=['month'])
-    ax = counts.sort_values(by='month').plot(x="month", y="comments")
+    ax = counts.sort_values(by='month').plot(x="month", y="comments", legend=None,
+        color="#715884", linewidth=2)
+    plt.xlabel("month")
+    plt.ylabel("comments per month")
     plt.savefig(HN_MONTHLY_COUNT_CHART)
     
 if False: # Generate monthly tokens

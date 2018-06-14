@@ -1,5 +1,21 @@
-# Instead of using a distance-from-community metric (log-likelihood)
-# leverage the distributed representation quality of word vectors
+# Predicts comment upvotes based on a 
+# The utility of this approach is predicated (perhaps) on comment upvotes
+# being a useful predictor of staying or leaving, 
+# so that they could serve as a latent variable.
+
+
+# Here's another attempt to predict user futures, this time with a three-layer neural network based on an embedding. 
+# First, I'll go simple and use the initial embedding. Next I'll try to make a TF model which uses the proper monthly
+# word vectors. (Or I'll pre-embed the comments. That's probably easier.
+
+# The input will be a 20 * 300 matrix. 
+
+
+# Load all comments. 
+# Group by username.
+# Save a npy with username -> comment indices.
+
+# Open train, test, dev
 
 import numpy as np
 import pandas as pd
@@ -8,12 +24,18 @@ from sklearn.linear_model import LogisticRegression
 from sklearn.metrics import precision_recall_fscore_support
 from tabulate import tabulate
 from pathlib import Path
-from helpers import 
 from settings import *
 
 TRAIN_MODELS = True # As opposed to using pretrained models
 
 results = []
+
+def feature_class(name, use_max=True, use_min=False):
+    "Generates a list of strings for four buckets of features, optionally including min and max"
+    suffixes = ['0', '1', '2', '3']
+    if use_min: suffixes += ['min']
+    if use_max: suffixes += ['max']
+    return ["{}_{}".format(name, suffix) for suffix in suffixes]
 
 def evaluate_tf_preds(preds, labels, dataset, desc):
     """
@@ -23,6 +45,63 @@ def evaluate_tf_preds(preds, labels, dataset, desc):
     classes = [x['class_ids'][0] for x in preds]
     p, r, f1, s = precision_recall_fscore_support(classes, labels.ravel())
     return [dataset, desc, p[1], r[1], f1[1], s[1]]
+
+# Create numpy arrays of features and labels. Features include 10 activity features 
+# and 20 * 300 = 6000 BoW representations of the first 20 comments.
+
+if False:
+    activity_features = feature_class('freq') + feature_class('month')
+    comments = pd.read_csv(HN_SCORED_COMMENTS_FULL, usecols=['username'])
+    comment_bow_wvs = np.load(HN_SCORED_COMMENT_BOW_WV, 'r')
+
+    for inf, outf in [
+        (TRAIN_EXAMPLES, TRAIN_NN_FEATURES), 
+        (DEV_EXAMPLES, DEV_NN_FEATURES),
+        (TEST_EXAMPLES, TEST_NN_FEATURES)
+    ]:
+        users = pd.read_csv(inf, usecols=['username', 'label'] + activity_features)
+        user_comments =users.merge(comments, left_on='username', right_on='username', how='left')
+        wvs = user_comments.groupby('username').apply(lambda g: comment_bow_wvs[g.index[:20]].ravel())
+        features = np.concatenate((users[activity_features], np.vstack(wvs)), axis=1)
+        labels = users.label.values
+        np.savez(outf, features=features, labels=labels)
+
+# Repeat, but using the weighted monthly embeddings
+if True:
+    w_activity_features = feature_class('freq') + feature_class('month')
+    w_comments = pd.read_csv(HN_SCORED_COMMENTS_FULL, usecols=['username'])
+    w_comment_bow_wvs = np.load(HN_SCORED_COMMENT_BOW_WV_WEIGHTED, 'r')
+
+    for inf, outf in [
+        (TRAIN_EXAMPLES, WEIGHTED_TRAIN_NN_FEATURES), 
+        (DEV_EXAMPLES, WEIGHTED_DEV_NN_FEATURES),
+        (TEST_EXAMPLES, WEIGHTED_TEST_NN_FEATURES)
+    ]:
+        w_users = pd.read_csv(inf, usecols=['username', 'label'] + w_activity_features)
+        w_user_comments = w_users.merge(w_comments, left_on='username', right_on='username', how='left')
+        w_wvs = w_user_comments.groupby('username').apply(lambda g: w_comment_bow_wvs[g.index[:20]].ravel())
+        w_features = np.concatenate((w_users[w_activity_features], np.vstack(w_wvs)), axis=1)
+        w_labels = w_users.label.values
+        np.savez(outf, features=w_features, labels=w_labels)
+
+# Now doing the same thing, but using the pre-looked-up embeddings from the initial embedding
+# Rather than from the monthly embeddings
+if False:
+    b_activity_features = feature_class('freq') + feature_class('month')
+    b_comments = pd.read_csv(HN_SCORED_COMMENTS_FULL, usecols=['username'])
+    b_comment_bow_wvs = np.load(HN_SCORED_COMMENT_BOW_WV_BASELINE, 'r')
+
+    for inf, outf in [
+        (TRAIN_EXAMPLES, BASELINE_TRAIN_NN_FEATURES), 
+        (DEV_EXAMPLES, BASELINE_DEV_NN_FEATURES),
+        (TEST_EXAMPLES, BASELINE_TEST_NN_FEATURES)
+    ]:
+        b_users = pd.read_csv(inf, usecols=['username', 'label'] + b_activity_features)
+        b_user_comments = b_users.merge(b_comments, left_on='username', right_on='username', how='left')
+        b_wvs = b_user_comments.groupby('username').apply(lambda g: b_comment_bow_wvs[g.index[:20]].ravel())
+        b_features = np.concatenate((b_users[b_activity_features], np.vstack(b_wvs)), axis=1)
+        b_labels = b_users.label.values
+        np.savez(outf, features=b_features, labels=b_labels)
 
 # Straight-up logistic regression (effectively 0-hidden-layer neural network) as a baseline. 
 if True:

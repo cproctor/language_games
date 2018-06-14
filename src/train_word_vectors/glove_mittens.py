@@ -34,7 +34,11 @@ def create_cooccurrence_matrices():
         counter.count(corpus)
         np.save(get_month_cooccurrence_matrix_filepath(begin.year, begin.month), counter.matrix)
 
-def create_monthly_glove_models():
+# Changes: 
+# I want to skip skippable months. 
+# Make this startable at any point.
+# Fix the bug.
+def create_monthly_glove_models(begin_month=None):
     model = Mittens(n=300, max_iter=1000)
     vocab, embedding = glove2dict(TRUNCATED_GLOVE_EMBEDDING)
     months = arrow.Arrow.span_range('month', arrow.get(START_MONTH), arrow.get(END_MONTH))
@@ -47,4 +51,6 @@ def create_monthly_glove_models():
         print("  saving")
         np.save(get_month_glove_embedding_filepath(begin.year, begin.month), embedding)
 
-create_cooccurrence_matrices()
+if __name__ == '__main__':
+    #create_cooccurrence_matrices()
+    create_monthly_glove_models()

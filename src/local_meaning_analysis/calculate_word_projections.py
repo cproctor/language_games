@@ -1,10 +1,14 @@
-from word_projections import request_word_projections, plot_words_on_relational_axis
+from word_projections import request_word_projections, plot_words_on_relational_axis, default_colors
+from characteristic_examples import get_characteristic_examples, show_characteristic_examples
+from comment_volumes import plot_comment_volume
+from language_models import VectorSpaceModel
 import weat
 import pandas as pd
 import matplotlib.pyplot as plt
 from settings import *
 import arrow
 from pathlib import Path
+from os.path import join
 
 # TODO rename this file.
 # Loading monthly models is slow. So we for the association analysis, we'll rely on 
@@ -29,7 +33,7 @@ if False:
     result.to_csv(ASSOCIATION_PROJECTIONS)
 
 # Generate the time series and the charts we need to show changes in implicit association
-if True:
+if False:
     projections = p = pd.read_csv(ASSOCIATION_PROJECTIONS)
 
     clean = lambda name: ''.join(i for i in name if not i.isdigit()).replace('_', ' ')
@@ -44,10 +48,7 @@ if True:
 def project_tech_companies_pleasant_unpleasant(generate_projections=True):
     tech_companies = [
         "tesla", 
-        "apple", 
-        "google",
-        "theranos",
-        "facebook"
+        "bitcoin"
     ]
     if generate_projections:
         requests = []
@@ -66,11 +67,41 @@ def project_tech_companies_pleasant_unpleasant(generate_projections=True):
         result.to_csv(TECH_COMPANY_WEAT_PLEASANT_UNPLEASANT_PROJECTIONS)
 
     projections = p = pd.read_csv(TECH_COMPANY_WEAT_PLEASANT_UNPLEASANT_PROJECTIONS)
-    plot_words_on_relational_axis(projections, ['tesla', 'theranos'], 
+    plot_words_on_relational_axis(projections, ['bitcoin', 'tesla'], 
             ['unpleasant1', 'pleasant1'],
             title="Hacker News discussion of tech companies over time",
-            endpoint_labels=['unpleasant', 'pleasant'], window=8)
+            endpoint_labels=['unpleasant', 'pleasant'], window=4)
     plt.savefig(TECH_COMPANY_WEAT_PLEASANT_UNPLEASANT_PLOT)
 
-# project_tech_companies_pleasant_unpleasant(generate_projections=False)
-        
+def tech_company_comment_volume(force_generate=False):
+    companies = ['bitcoin', 'tesla']
+    plot_comment_volume(companies, TECH_COMPANY_COMMENT_VOLUMES, force=force_generate)
+    plt.savefig(TECH_COMPANY_COMMENT_VOLUMES_PLOT)
+
+def tech_company_examples():
+    baseline = VectorSpaceModel(INITIAL_MODEL) 
+    get_characteristic_examples(2012, 9,  ['tesla'], baseline_model=baseline) # high Tesla
+    get_characteristic_examples(2013, 11, ['tesla'], baseline_model=baseline) # low Tesla
+    get_characteristic_examples(2011, 11, ['bitcoin'], baseline_model=baseline) # low bitcoin
+    get_characteristic_examples(2011, 3,  ['bitcoin'], baseline_model=baseline) # high Facebook
+
+def show_examples():
+    print("\n HIGH TESLA")
+    show_characteristic_examples(2012, 9, ['tesla'], sort_by='score')
+    print("\n LOW TESLA")
+    show_characteristic_examples(2013, 11, ['tesla'], sort_by='score')
+    print("\n HIGH BITCOIN")
+    show_characteristic_examples(2011, 11, ['bitcoin'], sort_by='score')
+    print("\n LOW BITCOIN")
+    show_characteristic_examples(2011, 3, ['bitcoin'], sort_by='score')
+
+#project_tech_companies_pleasant_unpleasant(generate_projections=True)
+#tech_company_comment_volume(force_generate=True)
+#tech_company_examples()
+show_examples()        
+
+
+
+
+
+

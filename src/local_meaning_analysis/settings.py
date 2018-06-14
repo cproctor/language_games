@@ -102,7 +102,19 @@ TECH_COMPANY_WEAT_PLEASANT_UNPLEASANT_PROJECTIONS = join(REMOTE_DATA, 'local_ana
         'tech_weat_pleasant_unpleasant_projections.csv')
 WEAT_EXPERIMENT_RESULTS = join(RESULTS, 'weat_experiments')
 TECH_COMPANY_WEAT_PLEASANT_UNPLEASANT_PLOT = join(WEAT_EXPERIMENT_RESULTS, "tech_company_weat_pleasant_unpleasant.png")
+TECH_COMPANY_COMMENT_VOLUMES = join(REMOTE_DATA, 'local_analysis', 'tech_company_comment_volume.csv')
+TECH_COMPANY_COMMENT_VOLUMES_PLOT = join(WEAT_EXPERIMENT_RESULTS, 'tech_company_comment_volume.png')
+TEMP_RESULTS = join(RESULTS, 'temp')
 
+# characteristic examples
+CHARACTERISTIC_EXAMPLES_DIR = join(RESULTS, 'characteristic_examples')
+CHARACTERISTIC_EXAMPLES_TEMPLATE = "{}_{}_{}.csv"
+
+def get_characteristic_examples_filepath(year, month, terms):
+    return join(
+        CHARACTERISTIC_EXAMPLES_DIR,
+        CHARACTERISTIC_EXAMPLES_TEMPLATE.format('_'.join(sorted(terms)), year, month)
+    )
 
 def get_month_filepath(year, month):
     "Returns the path to a CSV of a month's comments"

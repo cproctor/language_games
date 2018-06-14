@@ -18,10 +18,11 @@ import arrow
 from tqdm import tqdm
 import nltk
 import io
+import os
 from collections import Counter, defaultdict
 import csv
 from settings import *
-from feature_extraction import ActivityFeatureExtractor, LinguisticFeatureExtractor, InitialModelFeatureExtractor
+from feature_extraction import *
 from gensim.models.keyedvectors import KeyedVectors
 import kenlm
 
@@ -150,6 +151,29 @@ if False: # Score each comment we care about so we can later compute linguistic 
                 'wv_score', 'created_at', 'username']])
     scored_comments.to_csv(HN_SCORED_COMMENTS)
 
+# June 13: Adding points and popularity cutoffs to scored comments. 
+# Points is the number of points, pop1, pop3, pop5, pop10, pop20 
+# are binary indicators of a threshold popularity.
+# Also re-sorted scored comments by created_at (see last line) so that subsequent
+# feature extraction will be based on the correct comments.
+# June 13: DONE
+if False:
+    scored_comments_full = pd.read_csv(HN_SCORED_COMMENTS_FULL, index_col=0)
+    scored_comments_full = scored_comments_full.assign(
+        pop1=scored_comments_full.points >= 1,
+        pop3=scored_comments_full.points >= 3,
+        pop5=scored_comments_full.points >= 5,
+        pop10=scored_comments_full.points >= 10,
+        pop20=scored_comments_full.points >= 20,
+    )
+    scored_comments = pd.read_csv(HN_SCORED_COMMENTS, index_col=0)
+    scored_comments = scored_comments.merge(
+        scored_comments_full[['object_id', 'points', 'pop1', 'pop3', 'pop5', 'pop10', 'pop20']],
+        left_on='object_id', right_on='object_id'
+    )
+    scored_comments.sort_values('created_at').to_csv(HN_SCORED_COMMENTS)
+
+
 if False: #Score comments based on the everyday language model (Google News)
     WORDS_TO_CONSIDER = 30
     COMMENTS_UPPER_BOUND = 7000000 # For word2vec scoring algorithm
@@ -165,23 +189,14 @@ if False: #Score comments based on the everyday language model (Google News)
             total_sentences=COMMENTS_UPPER_BOUND)))
     comments.to_csv(HN_SCORED_COMMENTS_INITIAL_MODEL)
 
-# OLD SCORING AND LABELING did not consider that short comments would be stripped. So we need to re-label
-# and re-filter the comments.
-if False:
-    users = pd.read_csv(USERS, usecols=['id', 'username'])
-    comments = pd.read_csv(HN_SCORED_COMMENTS, parse_dates=['created_at'])
-    counts = Counter(comments.username)
-    user_counts = pd.DataFrame({'username': counts.keys(), 'comment_count': counts.values()})
-    users = user_counts.merge(users, left_on='username', right_on='username')
-    users = classify_users(users, 20, 50, 200)
-    users.to_csv(HN_CLASSIFIED_USERS)
-
-# Working with HN_SCORED_COMMENTS (already filtered to include only comments from departed or living users),
+# Updated June 13
+# Working with HN_SCORED_COMMENTS (filtered to include only comments from departed or living users),
 # map users (and comments) -> examples (features and labels)
 # Then generate train, dev, test set split of users.
+# June 13: DONE
 if False: 
-    activityFE = ActivityFeatureExtractor()
-    linguisticFE = LinguisticFeatureExtractor()
+    featureExtractors = ([ActivityFeatureExtractor(), LinguisticFeatureExtractor()] + 
+        [PopularityFeatureExtractor(threshold=n) for n in [1,3,5,10,20]])
     examples = []
     
     users = pd.read_csv(HN_CLASSIFIED_USERS, usecols=['id', 'username', 'label'])
@@ -190,35 +205,18 @@ if False:
         uc = comments[comments.username == u.username][:20]
         if len(uc) < 20: continue # I checked before for user comment counts, but 
         example = {'label': u.label, 'username': u.username}
-        example.update(activityFE.extract_features(uc))
-        example.update(linguisticFE.extract_features(uc))
+        for fe in featureExtractors:
+            example.update(fe.extract_features(uc))
         examples.append(example)
 
     examples = pd.DataFrame(examples)
-    train, dev, test = np.split(examples.sample(frac=1), [int(.6*len(examples)), int(.8*len(examples))])
-    train.to_csv(TRAIN_EXAMPLES)
-    dev.to_csv(DEV_EXAMPLES)
-    test.to_csv(TEST_EXAMPLES)
+    shuffled_examples = examples.sample(frac=1, random_state=RANDOM_STATE)
+    train, dev, test = np.split(shuffled_examples, [int(.6*len(examples)), int(.8*len(examples))])
+    train.to_csv(TRAIN_EXAMPLES, index=False)
+    dev.to_csv(DEV_EXAMPLES, index=False)
+    test.to_csv(TEST_EXAMPLES, index=False)
 
-# Now that I have added in the inital comment scores, I want to bin them up to use as examples
-if False: 
-    linguisticFE = InitialModelFeatureExtractor()
-    examples = []
-    
-    users = pd.read_csv(HN_CLASSIFIED_USERS, usecols=['id', 'username', 'label'])
-    comments = pd.read_csv(HN_SCORED_COMMENTS, usecols=['username', 'created_at'], parse_dates=['created_at'])
-    scores = pd.read_csv(HN_SCORED_COMMENTS_INITIAL_MODEL)
-    comments = comments.merge(scores, left_index=True, right_index=True)
-    user_comment_groups = comments.groupby('username')
-    for username, user_comments in tqdm(user_comment_groups, total=17896):
-        if len(user_comments) < 20: continue # I checked before for user comment counts, but just in case
-        example = {'username': username}
-        example.update(linguisticFE.extract_features(user_comments[:20]))
-        examples.append(example)
-    examples = pd.DataFrame(examples)
-    examples.to_csv(WV_INITIAL_MODEL_FEATURES)
-
-# OK, so our original word vector results aren't great. To test out more features, I want a quicker mapping
+# So our original word vector results aren't great. To test out more features, I want a quicker mapping
 # of users to their comments. Now I'm going to generate word vector features
 if False: 
     comments = pd.read_csv(HN_SCORED_COMMENTS_FULL, usecols=['comment_text', 'created_at'],
@@ -236,10 +234,42 @@ if False:
         del wv_model
     np.save(HN_SCORED_COMMENT_BOW_WV, comment_wvs)
 
-# Those word vectors worked great. For comparison, now I want to see what happens if I just use the original
+# Repeating the previous section, but now creating a lookup for the GloVE BoW vector
+# of all scored comments (or at least those falling within the trained models.
+if True: 
+    def glove2dict(glove_filename):
+        with open(glove_filename) as f:
+            reader = csv.reader(f, delimiter=' ', quoting=csv.QUOTE_NONE)
+            embed = {}
+            vocab = []
+            for line in reader:
+                embed[line[0]] = np.array(list(map(float, line[1:])))
+                vocab.append(line[0])
+        return vocab, embed
+    
+    vocab, _ = glove2dict(TRUNCATED_GLOVE_EMBEDDING)
+    comments = pd.read_csv(HN_SCORED_COMMENTS_FULL, usecols=['comment_text', 'created_at'],
+            parse_dates=['created_at']).sort_values('created_at')
+    comment_wvs = np.zeros((len(comments), 300))
+    groups = comments.groupby([comments.created_at.dt.year, comments.created_at.dt.month], sort=False)
+    for (year, month), month_comments in groups:
+        if not os.path.exists(get_month_glove_embedding_filepath(year, month)):
+            print("Skipping {}-{} because there is no embedding.".format(year, month))
+            continue
+        print("{}-{}".format(year, month))
+        arr = np.load(get_month_glove_embedding_filepath(year, month))
+        emb = pd.Series([np.array(x) for x in arr.tolist()], index=vocab)
+        for ix, c in month_comments.iterrows():
+            cl = [w for w in str(c.comment_text).split() if w in vocab]
+            if any(cl):
+                wv = emb[cl].mean(axis=0)  
+                comment_wvs[ix] = wv
+    np.save(HN_SCORED_COMMENT_GLOVE_BOW_WV, comment_wvs)
+
+# Those word vectors worked great. For comparison, I want to see what happens if I just use the original
 # Word2Vec embedding instead of using each month's. This could be done in a more straightforward way, 
 # But I already had the code for looking up via each monthly model and wanted to reduce the chance of errors.
-if True:
+if False:
     print("PRE-LOOKUP OF COMMENTS FROM BASELINE EMBEDDING")
     comments = pd.read_csv(HN_SCORED_COMMENTS_FULL, usecols=['comment_text', 'created_at'],
             parse_dates=['created_at'])
@@ -254,4 +284,31 @@ if True:
                 wv = wv_model.wv[cl].mean(axis=0)  
                 comment_wvs[ix] = wv
     np.save(HN_SCORED_COMMENT_BOW_WV_BASELINE, comment_wvs) 
-        
+
+# NOTE: (June 13) HN_SCORED_COMMENTS is now sorted by `created_at`, which is necessary for 
+# accurately generating binned comments. HN_SCORED_COMMENTS_FULL is not sorted, preserving the
+# original indexing on which the word vector lookup was generated. 
+
+# I don't have time to re-generate the embedding BoW lookups. So the thing to do is capture
+# `original_index` of HN_SCORED_COMMENTS_FULL, then sort by created_at, then grab 
+# (now-scrambled) `original_index` and use this as a sort order on dimension 0 of
+# HN_SCORED_COMMENT_BOW_WV_BASELINE and HN_SCORED_COMMENT_BOW_WV_BASELINE
+# Need to write some tests on this...
+# June 13: Complete
+if False:
+    print("PROPERLY SORTING BoW EMBEDDING LOOKUPS")
+    ORIGINAL_INDEX = 0
+    CREATED_AT = 7
+    comments = pd.read_csv(HN_SCORED_COMMENTS_FULL, usecols=[ORIGINAL_INDEX, CREATED_AT], 
+            parse_dates=['created_at'])
+    comments.rename(columns={"Unnamed: 0": "original_index"}, inplace=True)
+    comments = comments.sort_values('created_at')
+    new_index = comments.original_index.values
+
+    for embeddingFile in [HN_SCORED_COMMENT_BOW_WV, HN_SCORED_COMMENT_BOW_WV_BASELINE]:
+        emb = np.load(embeddingFile, 'r')
+        np.save(embeddingFile, emb[new_index])
+
+
+
+

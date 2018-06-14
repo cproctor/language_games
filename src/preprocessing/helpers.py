@@ -6,7 +6,7 @@ import sqlite3
 import os
 import nltk
 import snap
-from HTMLParser import HTMLParser
+from html.parser import HTMLParser
 import io
 
 def create_db_if_missing(csvfile, dbfile):

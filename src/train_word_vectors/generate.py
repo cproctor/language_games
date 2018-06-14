@@ -26,6 +26,11 @@ def create_initial_model():
     model = Word2Vec(size=300, sg=1, hs=1, negative=0) # Hey! Is no negative sampling a problem? 
                                                        # Hopefully this just means a bad non-optimization
                                                        # rather than invalid results. Check the gensim code.
+                                                       # I believe that not using negative sampling just means
+                                                       # I'm using the (very) inefficient approach of computing
+                                                       # the softmax over all non-context words at each iteration.
+                                                       # So not invalid, just inefficient, probably contributing to 
+                                                       # worse vectors than I would have otherwise.
     print("building vocabulary...")
     model.build_vocab(sentences)
     print("intersecting pretrained word vectors...")

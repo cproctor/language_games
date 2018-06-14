@@ -28,7 +28,7 @@ class FeatureExtractor:
         return features
 
     def extract_features(self, comments):
-        "Maps comments to activity-based features."
+        "Maps comments to binned features."
         assert len(comments) % self.bin_size == 0
         bins = comments.groupby(np.arange(len(comments)) // self.bin_size)
         features = {}
@@ -80,6 +80,19 @@ class InitialModelFeatureExtractor(FeatureExtractor):
 
     def bin_word_vector_ll(self, comments):
         return np.mean(comments['initial_wv_score'])
+
+class PopularityFeatureExtractor(FeatureExtractor):
+    "Comments should already have popX score"
+    def __init__(self, bin_size=5, threshold=1):
+        self.bin_size = bin_size
+        self.threshold = threshold
+        self.feature_name = "pop{}".format(threshold)
+        self.feature_classes = {
+            self.feature_name: self.bin_pop
+        }
+
+    def bin_pop(self, comments):
+        return len(comments[comments[self.feature_name]])
 
 
 
