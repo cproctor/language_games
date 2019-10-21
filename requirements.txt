@@ -23,7 +23,7 @@ kenlm==0.0.0
 Markdown==2.6.11
 matplotlib==2.1.0
 mittens==0.1
-nltk==3.2.5
+nltk==3.4.5
 numpy==1.14.2
 pandas==0.22.0
 parso==0.1.0
