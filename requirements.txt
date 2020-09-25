@@ -47,7 +47,7 @@ smart-open==1.5.3
 snap==0.5
 tabulate==0.8.2
 tensorboard==1.7.0
-tensorflow==1.7.0
+tensorflow==1.15.4
 tensorflow-tensorboard==0.4.0rc2
 termcolor==1.1.0
 tqdm==4.19.4
